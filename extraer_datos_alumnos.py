@@ -13,7 +13,8 @@ import os
 import argparse
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets, QtPrintSupport
-#from PyQt5.QtPrintSupport import QPrintDialog, QPrinter, QPrintPreviewDialog
+
+# from PyQt5.QtPrintSupport import QPrintDialog, QPrinter, QPrintPreviewDialog
 
 
 # from plantilla import Ui_MainWindow
@@ -120,6 +121,32 @@ class Tabla:
             print("\n ERROR : Opción inválida ( opciones disponibles : 0 y 1")
             exit(3)
 
+    def read_CSV(self, path, delimiter=';', encoding='utf-8-sig'):
+
+        with open(path, encoding=encoding) as File:
+            reader = csv.reader(File, delimiter=delimiter)
+            # Para cada fila del fichero
+            for index, row in enumerate(reader):
+
+                # Comprobamos que no esté vacía y que no sea comentarios
+                if row:
+                    for col_index, col in enumerate(row):
+                        if index == 0:
+                            first_row = row
+
+                            # Comprobamos si no hemos guardado dicho campo de forumulario y le asignamos una lista
+                            if not col.strip() in self.fields_form:
+                                data = []
+                                self.fields_form[col.strip()] = data
+                            # self.add_spaces(0, row)
+                        else:
+                            self.fields_form[first_row[col_index]].append(col.strip())
+
+                    if index != 0:
+                        self.cont_alumnos += 1
+
+
+
     def clear_table(self):
         self.cont_alumnos = 0
         self.fields_form = {}
@@ -189,6 +216,7 @@ class Ui_MainWindow(object):
         self.tableWidget.setGeometry(QtCore.QRect(0, 1, 771, 551))
         self.tableWidget.setRowCount(30)
         self.tableWidget.setColumnCount(30)
+
         self.tableWidget.setObjectName("tableWidget")
         item = QtWidgets.QTableWidgetItem()
         self.tableWidget.setItem(0, 0, item)
@@ -201,17 +229,25 @@ class Ui_MainWindow(object):
         self.menuBar.setObjectName("menuBar")
         self.menuArchivo = QtWidgets.QMenu(self.menuBar)
         self.menuArchivo.setObjectName("menuArchivo")
-        self.actionGuardar_como = QtWidgets.QAction(MainWindow)
-        self.actionGuardar_como.setObjectName("actionGuardar_como")
+        self.actionGuardarCSV = QtWidgets.QAction(MainWindow)
+        self.actionGuardarCSV.setObjectName("actionGuardarCSV")
         MainWindow.setMenuBar(self.menuBar)
         self.actionNuevo = QtWidgets.QAction(MainWindow)
         self.actionNuevo.setObjectName("actionNuevo")
         self.actionAbrir = QtWidgets.QAction(MainWindow)
         self.actionAbrir.setObjectName("actionAbrir")
+        self.actionImportarAlumnos = QtWidgets.QAction(MainWindow)
+        self.actionImportarAlumnos.setObjectName("actionImportarAlumnos")
+        self.actionSalir = QtWidgets.QAction(MainWindow)
+        self.actionSalir.setObjectName("actionSalir")
+
         self.menuArchivo.addSeparator()
-        self.menuArchivo.addAction(self.actionGuardar_como)
         self.menuArchivo.addAction(self.actionNuevo)
         self.menuArchivo.addAction(self.actionAbrir)
+        self.menuArchivo.addAction(self.actionImportarAlumnos)
+        self.menuArchivo.addAction(self.actionGuardarCSV)
+        self.menuArchivo.addAction(self.actionSalir)
+
         self.menuBar.addAction(self.menuArchivo.menuAction())
 
         self.menuEditar = QtWidgets.QMenu(self.menuBar)
@@ -225,16 +261,19 @@ class Ui_MainWindow(object):
         self.menuEditar.addAction(self.actionA_adir_columnas)
         self.menuBar.addAction(self.menuEditar.menuAction())
 
-        self.documento = QtGui.QTextDocument()
         self.Tabla = Tabla()
         self.confirm_clean_before_open = False
 
+        self.diccionario_keys = {}
+
         self.retranslateUi(MainWindow)
         self.actionNuevo.triggered.connect(self.clearTable)
-        self.actionAbrir.triggered.connect(self.getData)
-        self.actionGuardar_como.triggered.connect(self.saveFile)
+        self.actionImportarAlumnos.triggered.connect(self.importarAlumnos)
+        self.actionAbrir.triggered.connect(self.abrirCSV)
+        self.actionGuardarCSV.triggered.connect(self.saveFile)
         self.actionA_adir_filas.triggered.connect(self.addRows)
         self.actionA_adir_columnas.triggered.connect(self.addCols)
+        self.actionSalir.triggered.connect(sys.exit)
 
         self.tableWidget.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
 
@@ -254,9 +293,11 @@ class Ui_MainWindow(object):
         self.tableWidget.setSortingEnabled(False)
         self.tableWidget.setSortingEnabled(__sortingEnabled)
         self.menuArchivo.setTitle(_translate("MainWindow", "Archivo"))
-        self.actionGuardar_como.setText(_translate("MainWindow", "Guardar como..."))
+        self.actionGuardarCSV.setText(_translate("MainWindow", "Guardar como CSV"))
         self.actionNuevo.setText(_translate("MainWindow", "Nuevo"))
         self.actionAbrir.setText(_translate("MainWindow", "Abrir"))
+        self.actionSalir.setText(_translate("MainWindow", "Salir"))
+        self.actionImportarAlumnos.setText(_translate("MainWindow", "Importar alumnos..."))
         self.menuEditar.setTitle(_translate("MainWindow", "Editar"))
         self.actionA_adir_filas.setText(_translate("MainWindow", "Añadir filas"))
         self.actionA_adir_columnas.setText(_translate("MainWindow", "Añadir columnas"))
@@ -275,74 +316,116 @@ class Ui_MainWindow(object):
             buttonReply.setDefaultButton(QtWidgets.QMessageBox.Yes)
 
             result = buttonReply.exec()
-        if self.confirm_clean_before_open or result == QtWidgets.QMessageBox.Yes :
+        if self.confirm_clean_before_open or result == QtWidgets.QMessageBox.Yes:
             self.tableWidget.clearContents()
             self.tableWidget.setRowCount(30)
             self.tableWidget.setColumnCount(30)
             self.Tabla.clear_table()
+            self.diccionario_keys.clear()
             self.confirm_clean_before_open = False
 
-
     ########################################################################################################################
     ########################################################################################################################
 
-    def getData(self):
+    def importarAlumnos(self):
 
-        tableEmpty = True
+        añadir = False
 
-        if not self.emptyTable():
-            buttonReply = QtWidgets.QMessageBox()
-            buttonReply.setWindowTitle("Ventana de confirmación")
-            buttonReply.setText("¿Estás seguro? Se perderá el contenido actual")
-            buttonReply.setIcon(QtWidgets.QMessageBox.Question)
-            buttonReply.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
-            buttonReply.setDefaultButton(QtWidgets.QMessageBox.Yes)
+        buttonReply = QtWidgets.QMessageBox()
+        buttonReply.setWindowTitle("Ventana de confirmación")
+        buttonReply.setText("¿Desea borrar el contenido actual o añadir nuevos datos a él?")
+        buttonReply.setIcon(QtWidgets.QMessageBox.Question)
+        buttonReply.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
+        buttonReply.setDefaultButton(QtWidgets.QMessageBox.Yes)
+        buttonYES = buttonReply.button(QtWidgets.QMessageBox.Yes)
+        buttonYES.setText("Borrar contenido")
+        buttonNO = buttonReply.button(QtWidgets.QMessageBox.No)
+        buttonNO.setText("Añadir nuevos datos")
 
-            result = buttonReply.exec()
+        buttonReply.exec()
 
-            if result == QtWidgets.QMessageBox.Yes:
-                self.confirm_clean_before_open = True
-                self.clearTable()
-            else:
-                tableEmpty = False
+        if buttonReply.clickedButton() == buttonYES:
+            self.confirm_clean_before_open = True
+            self.clearTable()
 
-        if tableEmpty:
-            fileName = QtWidgets.QFileDialog()
-            folder = fileName.getExistingDirectory()
+        else:
+            añadir = True
+            self.Tabla.clear_table()
+
+
+
+        fileName = QtWidgets.QFileDialog()
+        folder = fileName.getExistingDirectory()
+
+        if folder:
+
             files = ls1(folder)
 
             for file in files:
                 # Guardamos los datos del alumno en una nueva fila del nuevo fichero
                 self.Tabla.add_row(os.path.join(folder, file))
 
-            self.saveData()
+            self.saveData(añadir)
 
     ########################################################################################################################
     ########################################################################################################################
 
-    def saveData(self):
-        self.tableWidget.setRowCount(self.Tabla.cont_alumnos + 1)
-        self.tableWidget.setColumnCount(len(self.Tabla.fields_form.keys()))
+    def saveData(self, añadir):
+
+
+
+        if añadir:
+            prev_rows = self.tableWidget.rowCount()
+            prev_cols = self.tableWidget.columnCount()
+            self.tableWidget.setRowCount(self.Tabla.cont_alumnos + prev_rows)
+            inicio = prev_rows-1
+
+
+        else:
+            self.tableWidget.setRowCount(self.Tabla.cont_alumnos + 1)
+            self.tableWidget.setColumnCount(len(self.Tabla.fields_form.keys()) + 1)
+            inicio=0
+
+
 
         for i in range(self.Tabla.cont_alumnos):
             for col in range(len(self.Tabla.fields_form.keys())):
                 key = list(self.Tabla.fields_form.keys())[col]
 
+                if col == 0:
+                    chkBoxItem = QtWidgets.QTableWidgetItem()
+                    chkBoxItem.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
+                    chkBoxItem.setCheckState(QtCore.Qt.Unchecked)
+                    self.tableWidget.setItem(inicio + i + 1, col, chkBoxItem)
+
                 if i == 0:
                     item = QtWidgets.QTableWidgetItem(key)
                     item.setBackground(QtGui.QColor(255, 128, 128))
-                    self.tableWidget.setItem(i, col, item)
+
+                    if not key in self.diccionario_keys:
+                        if añadir:
+                            self.tableWidget.setColumnCount(prev_cols+1)
+                            self.diccionario_keys[key] = prev_cols
+                            self.tableWidget.setItem(i, prev_cols, item)
+                            prev_cols+=1
+                        else:
+                            self.diccionario_keys[key] = col +1
+                            self.tableWidget.setItem(i, col + 1, item)
+
+
+
 
                 data = self.Tabla.fields_form[key][i]
-                self.tableWidget.setItem(i + 1, col, QtWidgets.QTableWidgetItem(data))
+                self.tableWidget.setItem(inicio + i + 1, self.diccionario_keys[key], QtWidgets.QTableWidgetItem(data))
+
+
 
     ########################################################################################################################
     ########################################################################################################################
 
     def saveFile(self):
         filename = QtWidgets.QFileDialog()
-        name = filename.getSaveFileName(filter="Archivo CSV (*.csv);;Archivo PDF (*.pdf)")
-        print(name[1])
+        name = filename.getSaveFileName(filter="Archivo CSV (*.csv)")
         if name[1] == 'Archivo CSV (*.csv)':
             self.writeCsv(name[0])
 
@@ -379,7 +462,7 @@ class Ui_MainWindow(object):
             for row in range(self.tableWidget.rowCount()):
                 rowdata = []
                 for column in range(self.tableWidget.columnCount()):
-                    item = self.tableWidget.item(row, column)
+                    item = self.tableWidget.item(row, column+1)
                     if item is not None:
                         rowdata.append(item.text())
 
@@ -389,7 +472,13 @@ class Ui_MainWindow(object):
     ########################################################################################################################
 
     def addRows(self):
+        prev_rows = self.tableWidget.rowCount()
         self.tableWidget.setRowCount(self.tableWidget.rowCount() + 5)
+        for fil in range(prev_rows, self.tableWidget.rowCount()):
+            chkBoxItem = QtWidgets.QTableWidgetItem()
+            chkBoxItem.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
+            chkBoxItem.setCheckState(QtCore.Qt.Unchecked)
+            self.tableWidget.setItem(fil, 0, chkBoxItem)
 
     def addCols(self):
         self.tableWidget.setColumnCount(self.tableWidget.columnCount() + 5)
@@ -403,14 +492,47 @@ class Ui_MainWindow(object):
             for col in range(self.tableWidget.columnCount()):
                 item = self.tableWidget.item(fil, col)
                 if item is not None and item.text():
-                    print("hola")
                     return False
 
         return True
 
+    ########################################################################################################################
+    ########################################################################################################################
+    def abrirCSV(self):
+        tableEmpty = True
+
+        if not self.emptyTable():
+            buttonReply = QtWidgets.QMessageBox()
+            buttonReply.setWindowTitle("Ventana de confirmación")
+            buttonReply.setText("¿Estás seguro? Se perderá el contenido actual")
+            buttonReply.setIcon(QtWidgets.QMessageBox.Question)
+            buttonReply.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
+            buttonReply.setDefaultButton(QtWidgets.QMessageBox.Yes)
+
+            result = buttonReply.exec()
+
+            if result == QtWidgets.QMessageBox.Yes:
+                self.confirm_clean_before_open = True
+                self.clearTable()
+            else:
+                tableEmpty = False
+
+        if tableEmpty:
+            filename = QtWidgets.QFileDialog()
+            name = filename.getOpenFileName(filter="Archivo CSV (*.csv)")
+            self.Tabla.read_CSV(name[0])
+            self.saveData(False)
+
+            confirm = QtWidgets.QMessageBox()
+            confirm.setWindowTitle("Importar de CSV")
+            confirm.setText("Datos importados con éxito.   ")
+            confirm.exec()
+
 
 ########################################################################################################################
 ########################################################################################################################
+
+
 
 app = QtWidgets.QApplication([])  # Creamos app y le pasamos una lista de argumentos vacíos
 ventana = Ui_MainWindow()
