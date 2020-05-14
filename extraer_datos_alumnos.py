@@ -145,8 +145,6 @@ class Tabla:
                     if index != 0:
                         self.cont_alumnos += 1
 
-
-
     def clear_table(self):
         self.cont_alumnos = 0
         self.fields_form = {}
@@ -261,6 +259,19 @@ class Ui_MainWindow(object):
         self.menuEditar.addAction(self.actionA_adir_columnas)
         self.menuBar.addAction(self.menuEditar.menuAction())
 
+        self.menuOrdenar = QtWidgets.QMenu(self.menuBar)
+        self.menuOrdenar.setObjectName("menuOrdenar")
+        self.actionApellido = QtWidgets.QAction(MainWindow)
+        self.actionApellido.setObjectName("actionApellido")
+        self.actionUniversidad_Destino = QtWidgets.QAction(MainWindow)
+        self.actionUniversidad_Destino.setObjectName("actionUniversidad_Destino")
+        self.actionPa_s_destino = QtWidgets.QAction(MainWindow)
+        self.actionPa_s_destino.setObjectName("actionPa_s_destino")
+        self.menuOrdenar.addAction(self.actionApellido)
+        self.menuOrdenar.addAction(self.actionUniversidad_Destino)
+        self.menuOrdenar.addAction(self.actionPa_s_destino)
+        self.menuBar.addAction(self.menuOrdenar.menuAction())
+
         self.Tabla = Tabla()
         self.confirm_clean_before_open = False
 
@@ -274,6 +285,10 @@ class Ui_MainWindow(object):
         self.actionA_adir_filas.triggered.connect(self.addRows)
         self.actionA_adir_columnas.triggered.connect(self.addCols)
         self.actionSalir.triggered.connect(sys.exit)
+        self.actionApellido.triggered.connect(self.orderBySurname)
+        self.actionUniversidad_Destino.triggered.connect(self.orderByDestUniversity)
+        self.actionPa_s_destino.triggered.connect(self.orderByDestCountry)
+
 
         self.tableWidget.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
 
@@ -301,6 +316,10 @@ class Ui_MainWindow(object):
         self.menuEditar.setTitle(_translate("MainWindow", "Editar"))
         self.actionA_adir_filas.setText(_translate("MainWindow", "Añadir filas"))
         self.actionA_adir_columnas.setText(_translate("MainWindow", "Añadir columnas"))
+        self.menuOrdenar.setTitle(_translate("MainWindow", "Ordenar"))
+        self.actionApellido.setText(_translate("MainWindow", "Apellido"))
+        self.actionUniversidad_Destino.setText(_translate("MainWindow", "Universidad destino"))
+        self.actionPa_s_destino.setText(_translate("MainWindow", "País destino"))
 
     ########################################################################################################################
     ########################################################################################################################
@@ -352,8 +371,6 @@ class Ui_MainWindow(object):
             añadir = True
             self.Tabla.clear_table()
 
-
-
         fileName = QtWidgets.QFileDialog()
         folder = fileName.getExistingDirectory()
 
@@ -372,53 +389,44 @@ class Ui_MainWindow(object):
 
     def saveData(self, añadir):
 
-
-
         if añadir:
             prev_rows = self.tableWidget.rowCount()
             prev_cols = self.tableWidget.columnCount()
             self.tableWidget.setRowCount(self.Tabla.cont_alumnos + prev_rows)
-            inicio = prev_rows-1
+            inicio = prev_rows - 1
 
 
         else:
             self.tableWidget.setRowCount(self.Tabla.cont_alumnos + 1)
             self.tableWidget.setColumnCount(len(self.Tabla.fields_form.keys()) + 1)
-            inicio=0
-
-
+            inicio = 0
 
         for i in range(self.Tabla.cont_alumnos):
             for col in range(len(self.Tabla.fields_form.keys())):
                 key = list(self.Tabla.fields_form.keys())[col]
 
                 if col == 0:
-                    chkBoxItem = QtWidgets.QTableWidgetItem()
+                    chkBoxItem = TableWidgetItem()
                     chkBoxItem.setFlags(QtCore.Qt.ItemIsUserCheckable | QtCore.Qt.ItemIsEnabled)
                     chkBoxItem.setCheckState(QtCore.Qt.Unchecked)
                     self.tableWidget.setItem(inicio + i + 1, col, chkBoxItem)
 
                 if i == 0:
-                    item = QtWidgets.QTableWidgetItem(key)
+                    item = TableWidgetItem(key)
                     item.setBackground(QtGui.QColor(255, 128, 128))
 
                     if not key in self.diccionario_keys:
                         if añadir:
-                            self.tableWidget.setColumnCount(prev_cols+1)
+                            self.tableWidget.setColumnCount(prev_cols + 1)
                             self.diccionario_keys[key] = prev_cols
                             self.tableWidget.setItem(i, prev_cols, item)
-                            prev_cols+=1
+                            prev_cols += 1
                         else:
-                            self.diccionario_keys[key] = col +1
+                            self.diccionario_keys[key] = col + 1
                             self.tableWidget.setItem(i, col + 1, item)
 
-
-
-
                 data = self.Tabla.fields_form[key][i]
-                self.tableWidget.setItem(inicio + i + 1, self.diccionario_keys[key], QtWidgets.QTableWidgetItem(data))
-
-
+                self.tableWidget.setItem(inicio + i + 1, self.diccionario_keys[key], TableWidgetItem(data))
 
     ########################################################################################################################
     ########################################################################################################################
@@ -462,7 +470,7 @@ class Ui_MainWindow(object):
             for row in range(self.tableWidget.rowCount()):
                 rowdata = []
                 for column in range(self.tableWidget.columnCount()):
-                    item = self.tableWidget.item(row, column+1)
+                    item = self.tableWidget.item(row, column + 1)
                     if item is not None:
                         rowdata.append(item.text())
 
@@ -499,6 +507,7 @@ class Ui_MainWindow(object):
     ########################################################################################################################
     ########################################################################################################################
     def abrirCSV(self):
+
         tableEmpty = True
 
         if not self.emptyTable():
@@ -520,18 +529,68 @@ class Ui_MainWindow(object):
         if tableEmpty:
             filename = QtWidgets.QFileDialog()
             name = filename.getOpenFileName(filter="Archivo CSV (*.csv)")
-            self.Tabla.read_CSV(name[0])
-            self.saveData(False)
+            if name[1] == 'Archivo CSV (*.csv)':
+                self.Tabla.read_CSV(name[0])
+                self.saveData(False)
+
+                confirm = QtWidgets.QMessageBox()
+                confirm.setWindowTitle("Importar de CSV")
+                confirm.setText("Datos importados con éxito.   ")
+                confirm.exec()
+            else:
+                pass
+
+    ########################################################################################################################
+    ########################################################################################################################
+
+
+    def orderBySurname(self):
+
+        if ("APELLIDOS:") in self.diccionario_keys.keys():
+            self.tableWidget.sortItems(self.diccionario_keys["APELLIDOS:"], QtCore.Qt.AscendingOrder)
+            self.tableWidget.show()
 
             confirm = QtWidgets.QMessageBox()
-            confirm.setWindowTitle("Importar de CSV")
-            confirm.setText("Datos importados con éxito.   ")
+            confirm.setWindowTitle("Ordenar")
+            confirm.setText("Datos ordenados por apellidos. ")
+            confirm.exec()
+
+    def orderByDestUniversity(self):
+
+        if ("Universidad de destino:") in self.diccionario_keys.keys():
+            self.tableWidget.sortItems(self.diccionario_keys["Universidad de destino:"], QtCore.Qt.AscendingOrder)
+            self.tableWidget.show()
+
+            confirm = QtWidgets.QMessageBox()
+            confirm.setWindowTitle("Ordenar")
+            confirm.setText("Datos ordenados por universidad de destino. ")
+            confirm.exec()
+
+    def orderByDestCountry(self):
+
+        if ("País de destino:") in self.diccionario_keys.keys():
+            self.tableWidget.sortItems(self.diccionario_keys["País de destino:"], QtCore.Qt.AscendingOrder)
+            self.tableWidget.show()
+
+            confirm = QtWidgets.QMessageBox()
+            confirm.setWindowTitle("Ordenar")
+            confirm.setText("Datos ordenados por país de destino. ")
             confirm.exec()
 
 
-########################################################################################################################
-########################################################################################################################
+class TableWidgetItem(QtWidgets.QTableWidgetItem):
 
+    def __lt__(self, other):
+        if self.row() != 0 and other.row() != 0:
+            return (self.text() <
+            other.text())
+        else:
+           return False
+
+
+
+########################################################################################################################
+########################################################################################################################
 
 
 app = QtWidgets.QApplication([])  # Creamos app y le pasamos una lista de argumentos vacíos

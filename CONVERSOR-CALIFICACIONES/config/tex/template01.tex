@@ -1,0 +1,83 @@
+\documentclass[paper = a4,10pt,twoside]{book}
+\usepackage[
+a4paper,
+total={170mm,200mm},
+left=2cm,
+top=2cm,
+includehead
+]{geometry}
+\usepackage[table,xcdraw]{xcolor}
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage[sfdefault]{roboto}  %% Option 'sfdefault' only if the base font of the document is to be sans serif
+\usepackage[T1]{fontenc}
+\usepackage[hidelinks]{hyperref}
+\usepackage{adjustbox}
+\graphicspath{ {config/images/} }
+
+%% set language
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+
+
+\pagestyle{fancy}
+\fancyhf{}
+
+\setlength\headheight{3cm}
+% \setlength\footheight{3cm}
+
+\setlength\doublerulesep{0.2cm}
+
+\lhead{\includegraphics[height=3cm]{ugr}}
+\rhead{\includegraphics[height=3cm]{erasmus}}
+\lfoot{\large{\textbf{Sr. Director de la ETS de Ingenierías Informática y de Telecomunicación}} \newline \large{\textbf{Universidad de Granada}}}
+
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\setlength{\parindent}{0cm}
+
+\begin{document}
+
+\section*{SOLICITUD DE RECONOCIMIENTO ACADÉMICO}
+\textbf{[[NOMBRE:]] [[APELLIDOS:]]}, natural de [[Municipio familiar:]], provincia de [[Provincia familiar:]], con N.I.F. nº \textbf{[[DNI:]]} y con domicilio en [[Domicilio familiar:]], correo electrónico \href{mailto:{{Email:}}}{{{Email:}}}, siendo estudiante de [[Estudios cursados:]] en la ETS de Ingenierías Informática y de Telecomunicación,
+
+\subsection*{EXPONE}
+\begin{enumerate}
+\item Que durante el curso académico \textbf{ {{Año académico de la estancia:}} } ha cursado estudios dentro del marco del programa ``{{Programa:}}'' en la [[Universidad de destino:]], Centro {{Código del centro:}}, y actuando como tutor docente en Granada d./dña. [[Nombre y apellidos del tutor:]].
+\item Que se firmó el Acuerdo de Estudios con nº de orden {{Nº de orden del acuerdo de estudios:}} y que la solicitud
+  corresponde al estado finalmente acordado.
+\item Que se adjunta certificado académico de las asignaturas cursadas con las
+  correspondientes calificaciones, por todo lo cual:
+\end{enumerate}
+\subsection*{SOLICITA}
+Que de acuerdo con las condiciones contempladas en el Reglamento General sobre Adaptaciones,
+Convalidaciones y Reconocimiento de Créditos, en el Reglamento de la Universidad de Granada
+sobre Movilidad Internacional de Estudiantes, y el informe del coordinador correspondiente, le
+sean reconocidos los estudios que al dorso se relacionan.
+
+\begin{center}
+  \vspace{1cm}
+  Granada, \today
+
+  \vspace{2cm}
+  Fdo: [[NOMBRE:]] [[APELLIDOS:]]
+\end{center}
+
+
+\newpage
+
+\begin{adjustbox}{width=\textwidth}
+  \begin{tabular}{|l|c|c|c|l|c|c|c|}
+    \hline
+    \rowcolor[HTML]{333333}
+    \multicolumn{4}{|c|}{\cellcolor[HTML]{333333}{\color[HTML]{FFFFFF} \textbf{\begin{tabular}[c]{@{}c@{}}Estudios cursados en\\ {{Universidad de destino:}} Králové\end{tabular}}}}                                                                                                                       & \multicolumn{4}{c|}{\cellcolor[HTML]{333333}{\color[HTML]{FFFFFF} \textbf{\begin{tabular}[c]{@{}c@{}}Estudios a reconocer en la\\ UNIVERSIDAD DE GRANADA\end{tabular}}}}                                                                                                                       \\ \hline
+    \rowcolor[HTML]{C0C0C0} 
+    {\color[HTML]{333333} Nombre de la asignatura / curso} & \multicolumn{1}{l|}{\cellcolor[HTML]{C0C0C0}{\color[HTML]{333333} ECTS}} & \multicolumn{1}{l|}{\cellcolor[HTML]{C0C0C0}{\color[HTML]{333333} otro}} & \multicolumn{1}{l|}{\cellcolor[HTML]{C0C0C0}{\color[HTML]{333333} Calificación}} & {\color[HTML]{333333} Nombre de la asignatura / curso} & \multicolumn{1}{l|}{\cellcolor[HTML]{C0C0C0}{\color[HTML]{333333} ECTS}} & \multicolumn{1}{l|}{\cellcolor[HTML]{C0C0C0}{\color[HTML]{333333} LRU}} & \multicolumn{1}{l|}{\cellcolor[HTML]{C0C0C0}{\color[HTML]{333333} Calificación}}  \\ \hline
+
+    {{:SUBJECT-LIST:}}
+  \end{tabular}
+\end{adjustbox}
+
+\end{document}
+

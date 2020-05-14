@@ -1,0 +1,77 @@
+#;SUSPENSO;APROBADO;NOTABLE;SOBRESALIENTE;OPCIÓN A MH
+ESPAÑA;0-4.9;5-6.9;7-8.9;9-9.9;10
+ALEMANIA;5;4-3.1;3.0-1.6;1.5-1.1;1.0 (1+)
+AUSTRIA;5;4-3.1;3.0-1.6;1.5-1.1;1.0 (1+)
+BÉLGICA;0-9.9;10-11.9;12-14.9;15-17.9;18-20
+BULGARIA;2 (Slab);3 (Sreden);4 (Dobur);5 (Mnogo Dobur);6 (Otlichen)
+CHIPRE;0-4.5;5-6.5;6.5-8.5;8.5-10;
+DINAMARCA;00;02-4;7;10;12
+ESLOVAQUIA;Nevyhovél;Dobrý;Vel'mi dobrý;Výborný;
+ESLOVENIA;0-4.9 (Nezadostno-Nezadovoljava);5-6.9 (Zadostno-Zadovoljava);"7-7.9 (Dobro) ; 8-8.9 (Prav Dobro)";9-9.9 (Prav Dobro);10 (Odlicno)
+ESTONIA;0 (F);"1 (Kasin/E/51% - 60%); 2 (Rahuldav/D/ 61% - 70%)";3 (Hea/C/ 71% - 80%);4 (Väga hea/ B/ 81% - 90%);5 (Suurepärane/ A/ 91% - 100%)
+FINLANDIA;0-0.9 (Hylatty);"1-1.9 (Tyydyttävä); 2-2.5 (Erittäin Tyydyttävä)";"2.6-2.9 (Erittäin Tyydyttävä); 3-3.9 (Hyvä)";4-4.9 (Erittäin Hyvä);5 (Kiitettävä)
+FRANCIA;0-9.9;10-11.9;12-14.9;15-17.9;18-20
+GRECIA;0-4.5;5-6.5;6.5-8.5;8.5-10;
+HUNGRÍA;1-1.9 (Elégtelen);2-2.9 (Elégséges);3-3.9 (Közepes);4-4.9 (Jó);5 (Jeles)
+IRLANDA;0-39;40-59;60-69;70-75;75 - 100
+ISLANDIA;0-4.99;5-5.99;6-7.24;7.25-9.99;10
+ITALIA;0-17;18-23;24-27;28-30;30 (e lode)
+LETONIA;0-3.9 (Neapmierinosi);"4-4.9 (Gandriz Viduveji); 5-5.9 (Viduveji); 6-6.9 (Gandriz Labi)";"7-7.9 (Labi); 8-8.9 (Loti Labi)";9-9.9 (Teicami);10 (Izcili)
+LITUANIA;1-4.9;5-6.9;7-8.9;9-9.9;10
+LUXEMBURGO;0 - 9.9;10 - 13.9;14 - 15.9;16 - 18.9;19 - 20
+MALTA;F;D+ - C;C+ - B;B+ - A;A+
+NORUEGA;6-4.1;4-2.9;2.8-1.7;1.6-1.1;1.0
+PAÍSES BAJOS;0-5.5;5.6-6.9;7-7.9;8-9.9;10
+POLONIA;0-2 (Niedostateczny);2.1-3 (Dostateczny);3.1-4 (Dobry);4.1-5 (Bardzo Dobry);
+PORTUGAL;0 - 9.9;10 - 13.9;14 - 16.9;17 - 18.9;19 - 20
+REINO UNIDO;0-39;40-59;60-69;70-75;75-100
+REPÚBLICA CHECA;4 (Nevyhovél);3 (Dobre);2 (Vel'mi Dobre);1 (Výborne);
+RUMANÍA;0-4.9;5-6.9;7-8.9;9-9.9;10
+SUECIA;F – U;G;G+;VG - VG+;VG++
+SUIZA (máx 6);0 - 3.9;4 - 4.4;4.5 - 5.4;5.5 - 5.9;6
+SUIZA (máx 10);0-4;5;6;7-9;10
+TURQUÍA;1-4 (Noksan - Pek Noksan) ;5-6 (Orta);7-8 (Iyi);9-10 (Pek iyi);
+CANADÁ 1;F-E;D-C+;B-B+;A- - A;A+
+CANADÁ 2;F;E-C;C+ - B+;A- - A;A+
+EEUU 1;F;D- - C-;C - B;B+ - A-;A
+EEUU 2;F;C- - C+;B- - B+;A- - A;A+
+PUERTO RICO;0 - 46 (F);"47 – 59 (D); 60-70 (C)";75 - 87 (B);88 - 100 (A);
+AUSTRALIA;0-49 (Failure);50-64 (Conceded - Conditional - Compensatory Pass – Pass);65-74 (Credit);75 - 84 (Distinction);85-100 (High Distinction)
+NUEVA ZELANDA;E - D;C;B;A;A
+ARGENTINA (aprob. 3.9);0-3.9;"4 - 5.9; 6 - 6.9";6-7;9-9.9;10
+ARGENTINA (aprob. 3);0-3;4-5;7-8;8-9;10
+ARGENTINA (aprob. 5);0-5;6;7-8.9;9;10
+BOLIVIA;0 - 50 (Reprobado);"51 - 63 (Suficiente); 64 - 69 (Bueno)";"70 - 76 (Bueno) ; 77 - 89 (Distinguido)";90 – 99 (Sobresaliente);100
+BRASIL (aprob. 4.9);0 - 4.9;5 - 6.9;7 - 7.9;8 - 8.9;9 - 10
+BRASIL (aprob. 49);0 - 49;50 - 69;C (70 - 79);80 - 89;90 - 100
+BRASIL (aprob. 59);0 – 59 (F);60 – 69 (D);;;
+CHILE;0 – 3.9 (Insuficiente);4 – 4.9 (Suficiente);5 – 5.9 (Bueno);6 – 6.9 (Muy bueno – Distinguido);7 (Muy bueno – Excelente)
+COLOMBIA;0 - 2.9 (Reprobado);3.0 - 3.6;3.7 - 4.3;4.4 - 4.7;4.8 - 5
+COSTA RICA (max. 10);0 - 6;7;8;9;10
+COSTA RICA (max. 100);0-69;70-79;80-89;90-99;100
+CUBA;0-2 (Reprobado-Suspenso);2 (Aprobado);4 (Notable-Aprovechado-Bien);5 (Sobresaliente-Excelente);
+ECUADOR (max. 100);0 - 50;51 - 69;70 - 89;90 - 99;100
+ECUADOR (max. 10);0 - 5.9;6 - 7.4;7.5 - 8.9;9 - 9.9;10
+ECUADOR (max. 40);0 - 23;24 - 28;29 - 34;35 - 38;39 - 40
+MÉXICO (máx. 10);0-5.9 (Reprobado-No suficiente);5.0-7.9 (Regular – Suficiente);8.0 – 8.9 (Bien);9.0 – 10 (Muy bien);
+MÉXICO (máx. 100);0-59 (Reprobado-No suficiente);50-79 (Regular – Suficiente);80 – 89 (Bien);Muy bien / 90 - 100;
+PANAMÁ;0-60 (Fracaso);"61 – 70 (Mínima de promoción); 71 - 74 (Regular)";"74 - 80 (Regular); 81 - 90 (Bueno)";91 - 99 (Sobresaliente) ;100
+PARAGUAY;1 (Reprobado-Insuficiente);2 (Regular-Aprobado);3 (Bueno);4 (Distinguido);5 (Sobresaliente/ Excelente)
+PERÚ (máx. 20);0 - 10.9;11 - 13.9;14 - 16.9;17 - 18.9;19 - 20
+PERÚ (máx. 100);0 - 69;70 - 79;80 - 89;90 - 100;
+URUGUAY;0 - 2 (Deficiente);3 - 4 (Regular-Aprobado);5 - 7 (Bueno);8 - 10 (Muy bueno);11 - 12
+VENEZUELA;0 - 9.9;10 - 13.9;14 - 16.9;17 - 18.9;19 - 20
+RUSIA;2 (Neudovletvoritel’no – Неудовлетворительно);3 (Udovletvoritel’no – Удовлетворительно);4 (Khorosho - Хорошо);5 (Otlichno – Отлично);
+UCRANIA;2 (nezadovil ́no – незадовільно);3 (zadovil ́no - задовільно);4 (dobre - добре);5 (vidminno – відмінно);
+CHINA (máx. 100);0 - 59;60 - 74;75 - 89;90 - 99;100
+CHINA (máx. 5);2;3;4;5;
+COREA;0 - 59 (F);60 - 73 (D- - C-);74 - 86 (C – B);87 – 96 (B+ - A);97 – 100 (A+)
+INDIA;0-39;40-59;60-69;70-75;75-100
+JAPÓN;0-59 (F);60-79 (D-C);80-89 (B);90-100 (A);
+SINGAPUR (máx. 100);0 - 49;50-69;70-76;77-85;86-100
+SINGAPUR (máx. 4.3);0;1-2.6;2.7-3.2;3.3-4.2;4.3
+EGIPTO;0 - 49;50 - 68;69 - 88;89 - 97;98 - 100
+ISRAEL;0 - 49;50 - 68;69 - 88;89 - 97;98 - 100
+JORDANIA;0 - 49;50 - 68;69 - 88;89 - 97;98 - 100
+MARRUECOS;0 - 9.9;10 - 13.9;14 - 15.9;16 - 18.9;19 - 20
+TÚNEZ;0 - 9.9;10 - 13.9;14 - 15.9;16 - 18.9;19 - 20
