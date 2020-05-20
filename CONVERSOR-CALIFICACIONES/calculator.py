@@ -1,5 +1,4 @@
-#!/usr/bin/env/python3
-
+#!/usr/bin/python
 """
 This file is part of ToR Conversor.
 
@@ -23,12 +22,12 @@ import csv
 import sys
 import os
 from subprocess import call
-from PyQt5.QtWidgets import QTabWidget,QPushButton,QWidget,QTableWidget,QMainWindow,QMessageBox,QMenu,QMenuBar,QVBoxLayout,QHeaderView,QHBoxLayout,QStatusBar,QAction,QComboBox,QLabel,QFileDialog,QTableWidgetItem,QApplication,QProgressBar,QToolButton,QDialog
-from PyQt5.QtGui import QColor,QRegion
-from PyQt5.QtCore import QMetaObject,QRect,Qt,QCoreApplication
+from PyQt5.QtWidgets import QTabWidget, QPushButton, QWidget, QTableWidget, QMainWindow, QMessageBox, QMenu, QMenuBar, \
+    QVBoxLayout, QHeaderView, QHBoxLayout, QStatusBar, QAction, QComboBox, QLabel, QFileDialog, QTableWidgetItem, \
+    QApplication, QProgressBar, QToolButton, QDialog
+from PyQt5.QtGui import QColor, QRegion
+from PyQt5.QtCore import QMetaObject, QRect, Qt, QCoreApplication
 from configparser import ConfigParser
-
-
 
 HOME = "España"
 UNIV_COLUMN = "Código VICERRECTORADO donde se han cursado los estudios:"
@@ -114,6 +113,7 @@ def ls1(path, option):
     else:
         return [obj for obj in os.listdir(path) if os.path.isfile(os.path.join(path, obj)) and obj[-3:] in ['ods']]
 
+
 class HoverButton(QToolButton):
     def __init__(self, parent=None):
         super(HoverButton, self).__init__(parent)
@@ -122,6 +122,7 @@ class HoverButton(QToolButton):
     def resizeEvent(self, event):
         self.setMask(QRegion(self.rect(), QRegion.Ellipse))
         QToolButton.resizeEvent(self, event)
+
 
 class BackButton(QWidget):
     def __init__(self, parent):
@@ -135,16 +136,16 @@ class BackButton(QWidget):
         self.layout.addSpacing(0)
         self.setLayout(self.layout)
         self.layout.setAlignment(Qt.AlignLeft)
-        self.layout.setContentsMargins(0,0,0,0)
+        self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(0)
+
 
 class SingleConversor(QDialog):
     def __init__(self, parent=None):
-        super(QDialog,self).__init__(parent)
+        super(QDialog, self).__init__(parent)
 
         self.setWindowTitle("Conversor Manual")
         self.resize(950, 500)
-
 
         layout = QVBoxLayout(parent)
         self.config = {}
@@ -155,6 +156,11 @@ class SingleConversor(QDialog):
         self.pushButton.setMaximumHeight(31)
         self.pushButton.setStyleSheet("background-color:rgb(220,128,128)")
         self.pushButton.clicked.connect(self.generate_manual)
+
+        self.helpButton = QPushButton("Ayuda")
+        self.helpButton.setMaximumHeight(31)
+        self.helpButton.setMaximumWidth(75)
+        self.helpButton.clicked.connect(self.showHelp)
 
         self.tableWidget = QTableWidget(self)
         self.tableWidget.setGeometry(QRect(0, 1, 771, 551))
@@ -167,13 +173,51 @@ class SingleConversor(QDialog):
         self.select_country.setObjectName("selectCountry")
         self.texto_select = QLabel("Selecciona el país de destino :")
 
+        self.clearContent = QPushButton("Vaciar tabla")
+        self.clearContent.setMaximumHeight(31)
+        self.clearContent.setMaximumWidth(125)
+        self.clearContent.clicked.connect(self.clearContents)
+
+        self.layout_buttons = QHBoxLayout()
+        self.layout_buttons.setSpacing(500)
+        self.layout_buttons.addWidget(self.clearContent,Qt.AlignLeft)
+        self.layout_buttons.addWidget(self.helpButton,Qt.AlignRight)
+
         layout.setSpacing(25)
         layout.addWidget(self.texto_select)
         layout.addWidget(self.select_country)
         layout.addWidget(self.tableWidget)
+        layout.addLayout(self.layout_buttons)
         layout.addWidget(self.pushButton)
 
         self.setLayout(layout)
+
+    def clearContents(self):
+        for i in range(1,self.tableWidget.rowCount()):
+            for p in range(self.tableWidget.columnCount()):
+                item = self.tableWidget.item(i,p)
+                if item is not None and item.text():
+                    newitem = QTableWidgetItem()
+                    self.tableWidget.setItem(i,p,newitem)
+
+
+    def showHelp(self):
+
+        confirm = QMessageBox()
+        confirm.setIcon(QMessageBox.Information)
+        confirm.setWindowTitle("Ayuda")
+        confirm.setIcon(QMessageBox.Information)
+
+        confirm.setText(
+                "Para obtener calificaciones de forma manual es necesario seguir los siguientes pasos:\n\n 1. Se selecciona el país del que se desea "
+                "convertir las calificaciones\n\n 2. Después se rellena la tabla con los datos que se piden para la conversión (Para ahorrar cierto tiempo"
+                " se han implementado 3 opciones)\n\n   2.1. Si solo va a convertir una asignatura, solo es necesario que rellena la calificación de origen "
+                "(Por defecto se asume que tanto la asignatura de destino como de origen valen 6 créditos, en caso contrario se le puede especificar)\n\n"
+                "   2.2. Si el bloque contiene más de una asignatura, debe rellenar los créditos de las asignaturas origen y destino y asignar el número de bloque. "
+                "NO ES NECESARIO PONER NOMBRES DE ASIGNATURA SINO LO DESEA\n\n  2.3. Cualquier otra ejecución en la que se rellenen todos los datos "
+                "funcionará igualmente de forma correcta\n\n 3. Pulsamos el botón de generar para obtener las calificaciones")
+
+        confirm.exec()
 
     def getCountries(self):
 
@@ -189,29 +233,71 @@ class SingleConversor(QDialog):
 
         self.select_country.addItems(fields_form)
 
+    def getNumFilledRows(self):
+        row = 0
+        for i in range(1, self.tableWidget.rowCount()):
+            for p in range(self.tableWidget.columnCount() - 2):
+
+                item = self.tableWidget.item(i, p)
+                if item is not None and item.text():
+                    row += 1
+                    break
+
+        return row
 
     def generate_manual(self):
 
         data = []
+        num_rows = self.getNumFilledRows()
 
         bloques = []
         for i in range(1, self.tableWidget.rowCount()):
+            calif = self.tableWidget.item(i, 4)
             row = []
             for p in range(self.tableWidget.columnCount() - 2):
                 item = self.tableWidget.item(i, p)
                 if item is not None and item.text():
                     if p == 8:
                         bloques.append(i)
+
                     row.append(item.text())
                 else:
-                    row.append("")
+
+                    if num_rows == 1:
+                        aux = ""
+                        if calif is not None and calif.text():
+                            if p == 0 or p == 5:
+                                aux = "Asig"
+                            elif p == 1 or p == 6:
+                                aux = '6'
+                            elif p == 3 or p == 8:
+                                bloques.append(i)
+                                aux = '1'
+                        row.append(aux)
+
+                    else:
+
+                        bloque_orig = self.tableWidget.item(i, 3)
+                        bloque_dest = self.tableWidget.item(i,8)
+                        aux =""
+
+                        if p==0 and bloque_orig is not None and bloque_orig.text():
+                            aux = "Asig"
+                        if p ==5 and bloque_dest is not None and bloque_dest.text():
+                            aux = "Asig"
+
+                        row.append(aux)
+
+
 
             data.append(row)
 
-        american, ToR = tor.parseToR(data)
-        raw_destination, raw_origin = readData(self.config['conversion_table'], HOME, self.select_country.currentText().upper())
-        x, aliasx, y, aliasy = tor.expandScores(raw_origin, raw_destination, american)
 
+
+        american, ToR = tor.parseToR(data)
+        raw_destination, raw_origin = readData(self.config['conversion_table'], HOME,
+                                               self.select_country.currentText().upper())
+        x, aliasx, y, aliasy = tor.expandScores(raw_origin, raw_destination, american)
 
         # 3. Expand the table to score suggestions for each destination subject
         ToR = tor.extendToR(ToR, x, aliasx, y, aliasy, american)
@@ -253,7 +339,6 @@ class SingleConversor(QDialog):
 
     def convertSingle(self):
 
-
         switcher = {
             0: "Asignatura destino",
             1: "ECTS",
@@ -282,7 +367,7 @@ class SingleConversor(QDialog):
 
 class MyTableWidget(QWidget):
 
-    def __init__(self,parent):
+    def __init__(self, parent):
         super(QWidget, self).__init__(parent)
         self.layout = QVBoxLayout(self)
         # Inicializar pantalla de pestañas
@@ -307,8 +392,7 @@ class MyTableWidget(QWidget):
         self.layout.addWidget(self.generateALL)
         self.setLayout(self.layout)
 
-
-    def crear_tabs(self,files):
+    def crear_tabs(self, files):
         self.tabs.clear()
         self.files = files
         self.datos_alumno.fromkeys(files)
@@ -340,13 +424,16 @@ class MyTableWidget(QWidget):
             pushButton2.clicked.connect(self.exportCSV)
             pushButton1.clicked.connect(self.exportPDF)
 
-            self.tabs.addTab(tab,file)
+            self.tabs.addTab(tab, file)
 
     def exportCSV(self):
-        if self.tabs.count()>0:
+        if self.tabs.count() > 0:
             file = self.tabs.tabText(self.tabs.currentIndex())
             self.check_info_show(self.tabs.tabText(self.tabs.currentIndex()))
-            exportCSVToR(self.datos_alumno[self.tabs.tabText(self.tabs.currentIndex())][2], self.datos_alumno[self.tabs.tabText(self.tabs.currentIndex())][3], os.path.join(self.datos_alumno[self.tabs.tabText(self.tabs.currentIndex())][1], self.tabs.tabText(self.tabs.currentIndex())[:-4] + "--debug_mode.csv"))
+            exportCSVToR(self.datos_alumno[self.tabs.tabText(self.tabs.currentIndex())][2],
+                         self.datos_alumno[self.tabs.tabText(self.tabs.currentIndex())][3],
+                         os.path.join(self.datos_alumno[self.tabs.tabText(self.tabs.currentIndex())][1],
+                                      self.tabs.tabText(self.tabs.currentIndex())[:-4] + "--debug_mode.csv"))
 
             confirm = QMessageBox()
             confirm.setIcon(QMessageBox.Information)
@@ -359,8 +446,9 @@ class MyTableWidget(QWidget):
             confirm.setWindowTitle("Exportar CSV alumno")
             confirm.setText("No hay alumnos actualmente")
             confirm.exec()
+
     def exportPDF(self):
-        if self.tabs.count()>0:
+        if self.tabs.count() > 0:
             self.check_info_show(self.tabs.tabText(self.tabs.currentIndex()))
             file = self.tabs.tabText(self.tabs.currentIndex())
             personalData = self.datos_alumno[file][2]
@@ -371,7 +459,7 @@ class MyTableWidget(QWidget):
             f.close()
 
             for d in personalData:
-                personalData[d] = personalData[d].replace("\\", "/").replace("_", "\_").replace("$","\$")
+                personalData[d] = personalData[d].replace("\\", "/").replace("_", "\_").replace("$", "\$")
                 text = text.replace("[[" + str(d) + "]]", personalData[d].upper())
                 text = text.replace("{{" + str(d) + "}}", personalData[d])
 
@@ -455,15 +543,14 @@ class MyTableWidget(QWidget):
             f.write(text)
             f.close()
 
-            cmd = '"%s"  -output-directory="%s" "%s"' % (
+            cmd = '%s  -output-directory="%s" "%s"' % (
                 self.config['pdflatex'], folder_path, os.path.join(folder_path, file[:-3] + "tex"))
             call(cmd)
-
 
             confirm = QMessageBox()
             confirm.setIcon(QMessageBox.Information)
             confirm.setWindowTitle("Generar calificaciones finales")
-            confirm.setText("Calificaciones de " + file[:-4]+ " generadas con éxito.")
+            confirm.setText("Calificaciones de " + file[:-4] + " generadas con éxito.")
             confirm.exec()
 
         else:
@@ -481,12 +568,11 @@ class MyTableWidget(QWidget):
         for i in range(num_tabs):
             self.files.append(self.tabs.tabText(i))
 
-
     def exportPDF_ALL(self):
 
         self.check_tabs()
 
-        if self.tabs.count()> 0:
+        if self.tabs.count() > 0:
             for i, file in enumerate(self.files):
                 self.check_info_show(file)
 
@@ -499,7 +585,7 @@ class MyTableWidget(QWidget):
 
                 for d in personalData:
                     personalData[d] = personalData[d].replace("\\", "/").replace("_", "\_").replace("$",
-                                                                                                              "\$")
+                                                                                                    "\$")
                     text = text.replace("[[" + str(d) + "]]", personalData[d].upper())
                     text = text.replace("{{" + str(d) + "}}", personalData[d])
 
@@ -583,7 +669,7 @@ class MyTableWidget(QWidget):
                 f.write(text)
                 f.close()
 
-                cmd = '"%s"  -output-directory="%s" "%s"' % (
+                cmd = '%s  -output-directory="%s" "%s"' % (
                     self.config['pdflatex'], folder_path, os.path.join(folder_path, file[:-3] + "tex"))
                 call(cmd)
 
@@ -591,8 +677,6 @@ class MyTableWidget(QWidget):
                     self.progress_bar.setValue(100)
                 else:
                     self.progress_bar.setValue(self.progress_bar.value() + int(100 / len(self.files)))
-
-
 
             confirm = QMessageBox()
             confirm.setIcon(QMessageBox.Information)
@@ -608,9 +692,7 @@ class MyTableWidget(QWidget):
             confirm.exec()
             self.progress_bar.hide()
 
-
-
-    def show_info_check(self, personalData, ToR,file):
+    def show_info_check(self, personalData, ToR, file):
 
         tableWidget = self.datos_alumno[file][0]
         tableWidget.setRowCount(0)
@@ -705,7 +787,7 @@ class MyTableWidget(QWidget):
             tableWidget.setRowCount(tableWidget.rowCount() + 1)
             idv += 1
 
-    def check_info_show(self,file):
+    def check_info_show(self, file):
 
         idv = -1
         personalData = self.datos_alumno[file][2]
@@ -757,7 +839,6 @@ class MyTableWidget(QWidget):
                         Tor[d][1][subject][col] = ""
 
 
-
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -767,7 +848,6 @@ class Ui_MainWindow(object):
 
         self.MyTable = MyTableWidget(self.MainWindow)
         self.MyTable.hide()
-
 
         # CENTRAL WIDGET
         self.centralwidget = QWidget(self.MainWindow)
@@ -788,7 +868,6 @@ class Ui_MainWindow(object):
         self.pushButton.setMaximumHeight(31)
         self.pushButton.setStyleSheet("background-color:rgb(220,128,128)")
 
-
         # MENÚ BAR
         self.menubar = QMenuBar(self.MainWindow)
         self.menubar.setGeometry(QRect(0, 0, 435, 26))
@@ -805,15 +884,18 @@ class Ui_MainWindow(object):
         self.menuArchivo = QMenu(self.menubar)
         self.menuArchivo.setObjectName("menuaArchivo")
         self.actionImportarAlumnos = QAction(self.MainWindow)
-        self.actionImportarAlumnos.setObjectName("Importar alumnos")
+        self.actionImportarAlumnos.setObjectName("Importar alumnos...")
 
         self.menuArchivo.addAction(self.actionImportarAlumnos)
 
+        self.actionImportarAlumno = QAction(self.MainWindow)
+        self.actionImportarAlumno.setObjectName("Importa alumno")
+
+        self.menuArchivo.addAction(self.actionImportarAlumno)
 
         # MENÚ OPCIONES
         self.menuOpciones = QMenu(self.menubar)
         self.menuOpciones.setObjectName("menuOpciones")
-
 
         self.actionA_adir_ruta_LibreOffice = QAction(self.MainWindow)
         self.actionA_adir_ruta_LibreOffice.setObjectName("actionA_adir_ruta_LibreOffice")
@@ -823,17 +905,19 @@ class Ui_MainWindow(object):
 
         self.actionAñadirTablaEquivalencias = QAction(self.MainWindow)
 
+        self.actionSeleccionarCarpetaDestino = QAction(self.MainWindow)
+
         self.menuOpciones.addAction(self.actionA_adir_ruta_LibreOffice)
         self.menuOpciones.addAction(self.actionA_adir_ruta_Latex)
         self.menuOpciones.addAction(self.actionAñadirTablaEquivalencias)
-
-
+        self.menuOpciones.addAction(self.actionSeleccionarCarpetaDestino)
 
         # CONFIG FILES
-        self.FolderAlumnos = False
         self.nameFolderAlumnos = ""
         self.config = {}
         self.fileConfig = 'config/config.ini'
+        self.files =[]
+
 
         # PARSER
         self.parser = ConfigParser()
@@ -849,7 +933,6 @@ class Ui_MainWindow(object):
         # BACK BUTTON
         self.back_button = BackButton(self.centralwidget)
         self.back_button.hide()
-
 
         # MODE MANUAL
         self.conversor_individual = QAction(self.MainWindow)
@@ -869,6 +952,8 @@ class Ui_MainWindow(object):
         self.helpButton.triggered.connect(self.showHelp)
         self.conversor_individual.triggered.connect(self.controller)
         self.back_button.back_buttom.clicked.connect(self.back)
+        self.actionImportarAlumno.triggered.connect(self.importAlumno)
+        self.actionSeleccionarCarpetaDestino.triggered.connect(self.selectFolder)
 
         self.retranslateUi(MainWindow)
 
@@ -878,7 +963,6 @@ class Ui_MainWindow(object):
         self.h_layout.setSpacing(25)
         self.h_layout.addSpacing(0)
         self.h_layout.addWidget(self.back_button)
-
 
         self.h_layout.addWidget(self.MyTable)
 
@@ -890,12 +974,7 @@ class Ui_MainWindow(object):
 
         self.centralwidget.setLayout(self.h_layout)
 
-
         self.centralwidget.setWindowTitle("ToR Conversor")
-
-
-
-
 
         QMetaObject.connectSlotsByName(self.MainWindow)
 
@@ -906,19 +985,21 @@ class Ui_MainWindow(object):
         self.menuOpciones.setTitle(_translate("MainWindow", "Opciones"))
         self.actionA_adir_ruta_LibreOffice.setText(_translate("MainWindow", "Añadir ruta Soffice"))
         self.actionA_adir_ruta_Latex.setText(_translate("MainWindow", "Añadir ruta generador de documentos"))
-        self.actionImportarAlumnos.setText((_translate("MainWindow", "Importar alumnos")))
+        self.actionImportarAlumnos.setText((_translate("MainWindow", "Importar alumnos ...")))
         self.helpButton.setText((_translate("MainWindow", "Ayuda")))
         self.conversor_individual.setText((_translate("MainWindow", "Conversor calificaciones manual")))
         self.actionAñadirTablaEquivalencias.setText("Añadir tabla de equivalencias")
         self.menuArchivo.setTitle("Archivo")
+        self.actionImportarAlumno.setText("Cargar alumno")
+        self.actionSeleccionarCarpetaDestino.setText("Seleccionar directorio de trabajo")
 
     def initialize_config(self):
         self.parser.read(self.fileConfig)
-        self.config['soffice'] = self.parser.get('config','soffice')
-        self.config['pdflatex'] = self.parser.get('config','pdflatex')
-        self.config['conversion_table'] = self.parser.get('config','conversion_table')
+        self.config['soffice'] = self.parser.get('config', 'soffice')
+        self.config['pdflatex'] = self.parser.get('config', 'pdflatex')
+        self.config['conversion_table'] = self.parser.get('config', 'conversion_table')
+        self.config['dest_folder'] = self.parser.get('config','dest_folder')
         self.MyTable.config = self.config
-
 
     def back(self):
         self.MyTable.hide()
@@ -929,15 +1010,16 @@ class Ui_MainWindow(object):
         self.pushButton.show()
         self.back_button.hide()
 
-
     def controller(self):
 
-
         single_conversor = SingleConversor()
+
         single_conversor.config = self.config
         single_conversor.getCountries()
         single_conversor.convertSingle()
         single_conversor.exec()
+
+
 
 
     def showHelp(self):
@@ -946,15 +1028,20 @@ class Ui_MainWindow(object):
         confirm.setIcon(QMessageBox.Information)
         confirm.setWindowTitle("Ayuda")
         confirm.setIcon(QMessageBox.Information)
-        """
+
+
         confirm.setText(
-            "Para obtener las calificaciones finales se deben realizar los siguientes pasos:\n\n 1. Se selecciona la ruta de Soffice "
-            "(Opciones -> Añadir ruta Soffice) y se selecciona el archivo .bin o .com (Windows)\n\n 2. (OPCIONAL) Se selecciona la ruta del "
-            "generador de documentos (Opciones -> Añadir ruta generador de documentos) y se selecciona el archivo ejecutable .exe"
-            "\n\n 3.  Se selecciona la carpeta que contiene los ficheros de los alumnos (Opciones -> importar Alumnos) \n\n"
-            "4. (OPCIONAL) Se selecciona la tabla de equivalencias (Opciones -> Añadir tabla de equivalencias) y se selecciona un fichero .csv\n\n"
-            "5. Se pulsa GENERAR, se pedirá la tabla de equivalencia de calificaciones y se ejecutará el software")"""
+            "Para obtener las calificaciones finales se deben realizar los siguientes pasos:\n\n "
+            "1. Se importan los alumnos \n(Archivo -> Importar alumnos ... o Cargar Alumno)\n\n "
+            "2. Si no se ha seleccionado el directorio de trabajo, se debe seleccionar en Opciones -> Seleccionar directorio de trabajo"
+            " (Carpeta donde trabajará el software y donde generará los diferentes ficheros de los alumnos)\n\n"
+            "3.  Se pulsa GENERAR y se ejecutará el software (se mostrará una barra de progreso para indicar al usuario que el software está trabajando \n\n"
+            "Si desea cambiar algún fichero de configuración, simplemente accedemos a Opciones y seleccionamos la opción que queramos modificar\n")
         confirm.exec()
+
+
+
+
 
     def addOfficeRoute(self):
         filename = QFileDialog()
@@ -963,7 +1050,7 @@ class Ui_MainWindow(object):
         name = filename.getOpenFileName(filter="Todos los archivos(*.*)")
         if name[0]:
             self.OfficeRoute = True
-            self.parser.set('config','soffice',name[0])
+            self.parser.set('config', 'soffice', name[0])
             with open(self.fileConfig, "w") as f:
                 self.parser.write(f)
             self.initialize_config()
@@ -993,6 +1080,43 @@ class Ui_MainWindow(object):
         else:
             pass
 
+    def selectFolder(self):
+        fileName = QFileDialog()
+        fileName.setWindowTitle("Seleccionar directorio de trabajo")
+        folder = fileName.getExistingDirectory()
+
+        if folder:
+            self.parser.set('config', 'dest_folder', folder)
+            with open(self.fileConfig, "w") as f:
+                self.parser.write(f)
+            self.initialize_config()
+            confirm = QMessageBox()
+            confirm.setIcon(QMessageBox.Information)
+            confirm.setWindowTitle("Seleccionar directorio de trabajo")
+            confirm.setText("Directorio de trabajo actual : " + folder )
+            confirm.exec()
+        else:
+            pass
+
+
+    def importAlumno(self):
+        filename = QFileDialog()
+        filename.setWindowTitle("Importar alumno")
+        name = filename.getOpenFileName(filter="Archivo ODS (*.ods)")
+        if name[0]:
+            self.files.clear()
+            self.nameFolderAlumnos = os.path.split(name[0])[0]
+            self.files.append(os.path.split(name[0])[1])
+
+            confirm = QMessageBox()
+            confirm.setIcon(QMessageBox.Information)
+            confirm.setWindowTitle("Importar alumno")
+            confirm.setText("Alumno importado con éxito.")
+            confirm.exec()
+        else:
+            self.files.clear()
+
+
     def getAlumnos(self):
         fileName = QFileDialog()
         fileName.setWindowTitle("Seleccionar carpeta con datos de los alumnos")
@@ -1000,14 +1124,14 @@ class Ui_MainWindow(object):
 
         if folder:
             self.nameFolderAlumnos = folder
-            self.FolderAlumnos = True
+            self.files = ls1(folder,False)
             confirm = QMessageBox()
             confirm.setIcon(QMessageBox.Information)
             confirm.setWindowTitle("Importar alumnos")
             confirm.setText("Alumnos importados con éxito.")
             confirm.exec()
         else:
-            self.FolderAlumnos = False
+            self.files.clear()
 
     def addTable(self):
         filename = QFileDialog()
@@ -1029,88 +1153,91 @@ class Ui_MainWindow(object):
 
     def generate(self):
 
+        if len(self.files) ==0:
+            confirm = QMessageBox()
+            confirm.setIcon(QMessageBox.Critical)
+            confirm.setWindowTitle("Generar calificaciones finales")
+            confirm.setText("ERROR : No se han importado los alumnos")
+            confirm.exec()
 
-            if self.FolderAlumnos == False:
-                confirm = QMessageBox()
-                confirm.setIcon(QMessageBox.Critical)
-                confirm.setWindowTitle("Generar calificaciones finales")
-                confirm.setText("ERROR : No se ha añadido la carpeta con los datos de los alumnos")
-                confirm.exec()
+        elif not self.config.get('soffice'):
+            confirm = QMessageBox()
+            confirm.setIcon(QMessageBox.Critical)
+            confirm.setWindowTitle("Generar calificaciones finales")
+            confirm.setText("ERROR : Se debe añadir la ruta de Soffice")
+            confirm.exec()
 
-            elif not self.config.get('soffice'):
-                confirm = QMessageBox()
-                confirm.setIcon(QMessageBox.Critical)
-                confirm.setWindowTitle("Generar calificaciones finales")
-                confirm.setText("ERROR : Se debe añadir la ruta de Soffice")
-                confirm.exec()
+        elif not self.config.get('pdflatex'):
+            confirm = QMessageBox()
+            confirm.setIcon(QMessageBox.Critical)
+            confirm.setWindowTitle("Generar calificaciones finales")
+            confirm.setText("ERROR : Se debe añadir la ruta del generador de documentos")
+            confirm.exec()
 
-            elif not self.config.get('pdflatex'):
-                confirm = QMessageBox()
-                confirm.setIcon(QMessageBox.Critical)
-                confirm.setWindowTitle("Generar calificaciones finales")
-                confirm.setText("ERROR : Se debe añadir la ruta del generador de documentos")
-                confirm.exec()
+        elif not self.config.get('dest_folder'):
+            confirm = QMessageBox()
+            confirm.setIcon(QMessageBox.Critical)
+            confirm.setWindowTitle("Generar calificaciones finales")
+            confirm.setText("ERROR : No se ha seleccionado directorio de trabajo")
+            confirm.exec()
 
-            else:
-                self.progress_bar.show()
-                self.progress_bar.setValue(0)
-                files = ls1(self.nameFolderAlumnos, False)
-                self.MyTable.crear_tabs(files)
+        else:
+            self.progress_bar.show()
+            self.progress_bar.setValue(0)
 
-                folder_primary = "ALUMNOS"
-                primary_path = os.path.join(os.path.abspath(os.getcwd()), folder_primary)
+            self.MyTable.crear_tabs(self.files)
+
+            folder_primary = "ALUMNOS"
+            primary_path = os.path.join(self.config['dest_folder'], folder_primary)
+            try:
+                os.stat(primary_path)
+            except:
+                os.mkdir(primary_path)
+
+            for i, file in enumerate(self.files):
                 try:
-                    os.stat(primary_path)
+                    os.stat(os.path.join(primary_path, file[:-4]))
                 except:
-                    os.mkdir(primary_path)
+                    os.mkdir(os.path.join(primary_path, file[:-4]))
 
-                for i, file in enumerate(files):
-                    try:
-                        os.stat(os.path.join(primary_path, file[:-4]))
-                    except:
-                        os.mkdir(os.path.join(primary_path, file[:-4]))
+                FNULL = open(os.devnull, 'w')
+                folder_path = os.path.join(primary_path, file[:-4])
+                cmd = '%s --headless --convert-to csv:"Text - txt - csv (StarCalc)":"59,34,76,1" --outdir "%s" "%s"' % (
+                    self.config['soffice'], folder_path, os.path.join(self.nameFolderAlumnos, file))
+                call(cmd)
 
-                    FNULL = open(os.devnull, 'w')
-                    folder_path = os.path.join(primary_path, file[:-4])
-                    cmd = '"%s" --headless --convert-to csv:"Text - txt - csv (StarCalc)":"59,34,76,1" --outdir "%s" "%s"' % (
-                        self.config['soffice'], folder_path, os.path.join(self.nameFolderAlumnos, file))
-                    call(cmd)
+                csv_file = os.path.join(folder_path, file[:-3] + "csv")
+                personalData, ToR = readToR(csv_file)
 
+                destination = personalData[UNIV_COLUMN].upper()
 
-                    csv_file = os.path.join(folder_path, file[:-3] + "csv")
-                    personalData, ToR = readToR(csv_file)
+                american, ToR = tor.parseToR(ToR)
 
-                    destination = personalData[UNIV_COLUMN].upper()
+                # 2. Parse and prepare equivalences table.
+                raw_destination, raw_origin = readData(self.config['conversion_table'], HOME, destination)
 
-                    american, ToR = tor.parseToR(ToR)
+                x, aliasx, y, aliasy = tor.expandScores(raw_origin, raw_destination, american)
 
-                    # 2. Parse and prepare equivalences table.
-                    raw_destination, raw_origin = readData(self.config['conversion_table'], HOME, destination)
+                # 3. Expand the table to score suggestions for each destination subject
+                ToR = tor.extendToR(ToR, x, aliasx, y, aliasy, american)
 
-                    x, aliasx, y, aliasy = tor.expandScores(raw_origin, raw_destination, american)
+                # Generate debug informatio
 
-                    # 3. Expand the table to score suggestions for each destination subject
-                    ToR = tor.extendToR(ToR, x, aliasx, y, aliasy, american)
+                self.MyTable.datos_alumno[file].extend([folder_path, personalData, ToR])
+                self.MyTable.show_info_check(personalData, ToR, file)
 
-                    # Generate debug informatio
+                if i == len(self.files) - 1:
+                    self.progress_bar.setValue(100)
+                else:
+                    self.progress_bar.setValue(self.progress_bar.value() + int(100 / len(self.files)))
 
-                    self.MyTable.datos_alumno[file].extend([folder_path, personalData, ToR])
-                    self.MyTable.show_info_check(personalData, ToR,file)
-
-                    if i == len(files)-1:
-                        self.progress_bar.setValue(100)
-                    else:
-                        self.progress_bar.setValue(self.progress_bar.value()+int(100/len(files)))
-
-                self.progress_bar.hide()
-                self.progress_bar.setValue(0)
-                self.pushButton.hide()
-                self.tableWidget.hide()
-                self.back_button.show()
-                self.h_layout.insertSpacing(2, -25)
-                self.MyTable.show()
-
-
+            self.progress_bar.hide()
+            self.progress_bar.setValue(0)
+            self.pushButton.hide()
+            self.tableWidget.hide()
+            self.back_button.show()
+            self.h_layout.insertSpacing(2, -25)
+            self.MyTable.show()
 
 
 ########################################################################################################################
