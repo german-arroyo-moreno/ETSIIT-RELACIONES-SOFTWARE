@@ -543,7 +543,7 @@ class MyTableWidget(QWidget):
             f.write(text)
             f.close()
 
-            cmd = '%s  -output-directory="%s" "%s"' % (
+            cmd = '%s  -output-directory=%s %s' % (
                 self.config['pdflatex'], folder_path, os.path.join(folder_path, file[:-3] + "tex"))
             call(cmd)
 
@@ -669,7 +669,7 @@ class MyTableWidget(QWidget):
                 f.write(text)
                 f.close()
 
-                cmd = '%s  -output-directory="%s" "%s"' % (
+                cmd = '%s  -output-directory=%s %s' % (
                     self.config['pdflatex'], folder_path, os.path.join(folder_path, file[:-3] + "tex"))
                 call(cmd)
 
