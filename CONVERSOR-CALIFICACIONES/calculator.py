@@ -1,4 +1,5 @@
 #!/usr/bin/python
+
 """
 This file is part of ToR Conversor.
 
@@ -21,7 +22,7 @@ import tor
 import csv
 import sys
 import os
-from subprocess import call
+from subprocess import call,check_call
 from PyQt5.QtWidgets import QTabWidget, QPushButton, QWidget, QTableWidget, QMainWindow, QMessageBox, QMenu, QMenuBar, \
     QVBoxLayout, QHeaderView, QHBoxLayout, QStatusBar, QAction, QComboBox, QLabel, QFileDialog, QTableWidgetItem, \
     QApplication, QProgressBar, QToolButton, QDialog
@@ -100,6 +101,8 @@ def readToR(fileName):
     return (personalData, subjectData)
 
 
+
+
 def ls1(path, option):
     """Función que obtiene todos los archivos del directorio pasado como argumento a la función , comprueba si son
     ficheros csv y finalmente devolvemos una lista con el nombre de todos los archivos encontrados.
@@ -173,7 +176,7 @@ class SingleConversor(QDialog):
         self.select_country.setObjectName("selectCountry")
         self.texto_select = QLabel("Selecciona el país de destino :")
 
-        self.clearContent = QPushButton("Vaciar tabla")
+        self.clearContent = QPushButton("Limpiar tabla")
         self.clearContent.setMaximumHeight(31)
         self.clearContent.setMaximumWidth(125)
         self.clearContent.clicked.connect(self.clearContents)
@@ -213,8 +216,8 @@ class SingleConversor(QDialog):
                 "convertir las calificaciones\n\n 2. Después se rellena la tabla con los datos que se piden para la conversión (Para ahorrar cierto tiempo"
                 " se han implementado 3 opciones)\n\n   2.1. Si solo va a convertir una asignatura, solo es necesario que rellena la calificación de origen "
                 "(Por defecto se asume que tanto la asignatura de destino como de origen valen 6 créditos, en caso contrario se le puede especificar)\n\n"
-                "   2.2. Si el bloque contiene más de una asignatura, debe rellenar los créditos de las asignaturas origen y destino y asignar el número de bloque. "
-                "NO ES NECESARIO PONER NOMBRES DE ASIGNATURA SINO LO DESEA\n\n  2.3. Cualquier otra ejecución en la que se rellenen todos los datos "
+                "   2.2. Si hay más de una asignatura, debe rellenar los créditos de las asignaturas origen y destino y asignar el número de bloque. "
+                "NO ES NECESARIO PONER NOMBRES DE ASIGNATURA SI NO LO DESEA\n\n  2.3. Cualquier otra ejecución en la que se rellenen todos los datos "
                 "funcionará igualmente de forma correcta\n\n 3. Pulsamos el botón de generar para obtener las calificaciones")
 
         confirm.exec()
@@ -426,20 +429,30 @@ class MyTableWidget(QWidget):
 
             self.tabs.addTab(tab, file)
 
+    def dialog_critical(self, s):
+        dlg = QMessageBox()
+        dlg.setText(s)
+        dlg.setIcon(QMessageBox.Critical)
+        dlg.show()
+
     def exportCSV(self):
         if self.tabs.count() > 0:
             file = self.tabs.tabText(self.tabs.currentIndex())
             self.check_info_show(self.tabs.tabText(self.tabs.currentIndex()))
-            exportCSVToR(self.datos_alumno[self.tabs.tabText(self.tabs.currentIndex())][2],
+            try:
+                exportCSVToR(self.datos_alumno[self.tabs.tabText(self.tabs.currentIndex())][2],
                          self.datos_alumno[self.tabs.tabText(self.tabs.currentIndex())][3],
                          os.path.join(self.datos_alumno[self.tabs.tabText(self.tabs.currentIndex())][1],
                                       self.tabs.tabText(self.tabs.currentIndex())[:-4] + "--debug_mode.csv"))
+            except Exception as e:
+                self.dialog_critical(str(e))
+            else:
 
-            confirm = QMessageBox()
-            confirm.setIcon(QMessageBox.Information)
-            confirm.setWindowTitle("Exportar CSV alumno")
-            confirm.setText("Alumno " + file[:-4] + " exportado a CSV con éxito.")
-            confirm.exec()
+                confirm = QMessageBox()
+                confirm.setIcon(QMessageBox.Information)
+                confirm.setWindowTitle("Exportar CSV alumno")
+                confirm.setText("Alumno " + file[:-4] + " exportado a CSV con éxito.")
+                confirm.exec()
         else:
             confirm = QMessageBox()
             confirm.setIcon(QMessageBox.Critical)
@@ -454,138 +467,16 @@ class MyTableWidget(QWidget):
             personalData = self.datos_alumno[file][2]
             Tor = self.datos_alumno[file][3]
             folder_path = self.datos_alumno[self.tabs.tabText(self.tabs.currentIndex())][1]
-            f = open(os.path.join(os.path.abspath(os.getcwd()), "config/tex/template01.tex"), "r", encoding='utf8')
-            text = f.read()
-            f.close()
-
-            for d in personalData:
-                personalData[d] = personalData[d].replace("\\", "/").replace("_", "\_").replace("$", "\$")
-                text = text.replace("[[" + str(d) + "]]", personalData[d].upper())
-                text = text.replace("{{" + str(d) + "}}", personalData[d])
-
-            # 5. Add the final calification:
-            table = ""
-
-            for block in Tor:
-                table += "\\hline \\hline \n"
-                maxCr = 0
-                fail = -1
-                score = 0
-                n = len(Tor[block][0])
-
-                for i in range(n):
-                    maxCr += Tor[block][0][i][1]
-
-                for i in range(n):
-                    if Tor[block][0][i][3] < 5:
-                        fail = Tor[block][0][i][3]
-                        score = fail
-                        break
-                    else:
-                        score += Tor[block][0][i][3] * (Tor[block][0][i][1] / maxCr)
-                for i in range(max(n, len(Tor[block][1]))):
-                    try:
-                        sOrig = Tor[block][1][i][0]
-                    except:
-                        sOrig = ""
-                    try:
-                        sDst = Tor[block][0][i][0]
-                    except:
-                        sDst = ""
-                    try:
-                        crOrig = Tor[block][1][i][1]
-                    except:
-                        crOrig = ""
-                    try:
-                        crDst = Tor[block][0][i][1]
-                    except:
-                        crDst = ""
-                    try:
-                        scoreDst = Tor[block][0][i][2]
-                    except:
-                        scoreDst = ""
-
-                    score = float("{:.1f}".format(score))
-                    if score < 0:
-                        crLabel = "NO PRESENTADO"
-                    elif score < 5:
-                        crLabel = "(SUSPENSO)"
-                    elif score < 7:
-                        crLabel = "(APROBADO)"
-                    elif score < 9:
-                        crLabel = "(NOTABLE)"
-                    elif score < 9.5:
-                        crLabel = "(SOBRESALIENTE)"
-                    else:
-                        crLabel = "(MATRÍCULA)"
-
-                    if score < 0 and sOrig != "":
-                        table += " {} & {} &  & {} & {} & {} &  & {} \\\\ \\hline \n".format(sDst, crDst,
-                                                                                             scoreDst,
-                                                                                             sOrig,
-                                                                                             crOrig,
-                                                                                             crLabel)
-                    elif sOrig == "":
-                        table += " {} & {} &  & {} & {} & {} &  & \\\\ \\hline \n".format(sDst, crDst,
-                                                                                          scoreDst,
-                                                                                          sOrig, crOrig)
-                    else:
-                        table += " {} & {} &  & {} & {} & {} &  & {:.1f} {} \\\\ \\hline \n".format(sDst,
-                                                                                                    crDst,
-                                                                                                    scoreDst,
-                                                                                                    sOrig,
-                                                                                                    crOrig,
-                                                                                                    score,
-                                                                                                    crLabel)
-
-            text = text.replace("{{:SUBJECT-LIST:}}", table)
-            f = open(os.path.join(folder_path, file[:-3] + "tex"), "w", encoding='utf8')
-            f.write(text)
-            f.close()
-
-            cmd = '%s  -output-directory=%s %s' % (
-                self.config['pdflatex'], folder_path, os.path.join(folder_path, file[:-3] + "tex"))
-            call(cmd)
-
-            confirm = QMessageBox()
-            confirm.setIcon(QMessageBox.Information)
-            confirm.setWindowTitle("Generar calificaciones finales")
-            confirm.setText("Calificaciones de " + file[:-4] + " generadas con éxito.")
-            confirm.exec()
-
-        else:
-            confirm = QMessageBox()
-            confirm.setIcon(QMessageBox.Critical)
-            confirm.setWindowTitle("Generar calificaciones finales")
-            confirm.setText("No hay alumnos actualmente")
-            confirm.exec()
-
-    def check_tabs(self):
-        self.progress_bar.show()
-        self.progress_bar.setValue(0)
-        num_tabs = self.tabs.count()
-        self.files.clear()
-        for i in range(num_tabs):
-            self.files.append(self.tabs.tabText(i))
-
-    def exportPDF_ALL(self):
-
-        self.check_tabs()
-
-        if self.tabs.count() > 0:
-            for i, file in enumerate(self.files):
-                self.check_info_show(file)
-
-                personalData = self.datos_alumno[file][2]
-                Tor = self.datos_alumno[file][3]
-                folder_path = self.datos_alumno[file][1]
-                f = open(os.path.join(os.path.abspath(os.getcwd()), "config/tex/template01.tex"), "r", encoding='utf8')
+            try:
+                f  = open(os.path.join(os.path.abspath(os.getcwd()), "config/tex/template01.tex"), "r", encoding='utf8')
+            except Exception as e:
+                self.dialog_critical(str(e))
+            else:
                 text = f.read()
                 f.close()
 
                 for d in personalData:
-                    personalData[d] = personalData[d].replace("\\", "/").replace("_", "\_").replace("$",
-                                                                                                    "\$")
+                    personalData[d] = personalData[d].replace("\\", "/").replace("_", "\_").replace("$", "\$")
                     text = text.replace("[[" + str(d) + "]]", personalData[d].upper())
                     text = text.replace("{{" + str(d) + "}}", personalData[d])
 
@@ -665,18 +556,164 @@ class MyTableWidget(QWidget):
                                                                                                         crLabel)
 
                 text = text.replace("{{:SUBJECT-LIST:}}", table)
-                f = open(os.path.join(folder_path, file[:-3] + "tex"), "w", encoding='utf8')
-                f.write(text)
-                f.close()
-
-                cmd = '%s  -output-directory=%s %s' % (
-                    self.config['pdflatex'], folder_path, os.path.join(folder_path, file[:-3] + "tex"))
-                call(cmd)
-
-                if i == len(self.files):
-                    self.progress_bar.setValue(100)
+                try:
+                    f = open(os.path.join(folder_path, file[:-3] + "tex"), "w", encoding='utf8')
+                except Exception as e:
+                    self.dialog_critical(str(e))
                 else:
-                    self.progress_bar.setValue(self.progress_bar.value() + int(100 / len(self.files)))
+                    f.write(text)
+                    f.close()
+
+                    cmd = '%s  -output-directory=%s %s' % (
+                        self.config['pdflatex'], folder_path, os.path.join(folder_path, file[:-3] + "tex"))
+
+                    try:
+                        call(cmd)
+                    except Exception as e:
+                        self.dialog_critical(str(e))
+                    else:
+                        confirm = QMessageBox()
+                        confirm.setIcon(QMessageBox.Information)
+                        confirm.setWindowTitle("Generar calificaciones finales")
+                        confirm.setText("Calificaciones de " + file[:-4] + " generadas con éxito.")
+                        confirm.exec()
+
+        else:
+            confirm = QMessageBox()
+            confirm.setIcon(QMessageBox.Critical)
+            confirm.setWindowTitle("Generar calificaciones finales")
+            confirm.setText("No hay alumnos actualmente")
+            confirm.exec()
+
+    def check_tabs(self):
+        self.progress_bar.show()
+        self.progress_bar.setValue(0)
+        num_tabs = self.tabs.count()
+        self.files.clear()
+        for i in range(num_tabs):
+            self.files.append(self.tabs.tabText(i))
+
+    def exportPDF_ALL(self):
+
+        self.check_tabs()
+
+        if self.tabs.count() > 0:
+            for i, file in enumerate(self.files):
+                self.check_info_show(file)
+
+                personalData = self.datos_alumno[file][2]
+                Tor = self.datos_alumno[file][3]
+                folder_path = self.datos_alumno[file][1]
+                try:
+                    f = open(os.path.join(os.path.abspath(os.getcwd()), "config/tex/template01.tex"), "r", encoding='utf8')
+                except Exception as e:
+                    self.dialog_critical(e)
+                else:
+                    text = f.read()
+                    f.close()
+
+                    for d in personalData:
+                        personalData[d] = personalData[d].replace("\\", "/").replace("_", "\_").replace("$",
+                                                                                                        "\$")
+                        text = text.replace("[[" + str(d) + "]]", personalData[d].upper())
+                        text = text.replace("{{" + str(d) + "}}", personalData[d])
+
+                    # 5. Add the final calification:
+                    table = ""
+
+                    for block in Tor:
+                        table += "\\hline \\hline \n"
+                        maxCr = 0
+                        fail = -1
+                        score = 0
+                        n = len(Tor[block][0])
+
+                        for i in range(n):
+                            maxCr += Tor[block][0][i][1]
+
+                        for i in range(n):
+                            if Tor[block][0][i][3] < 5:
+                                fail = Tor[block][0][i][3]
+                                score = fail
+                                break
+                            else:
+                                score += Tor[block][0][i][3] * (Tor[block][0][i][1] / maxCr)
+                        for i in range(max(n, len(Tor[block][1]))):
+                            try:
+                                sOrig = Tor[block][1][i][0]
+                            except:
+                                sOrig = ""
+                            try:
+                                sDst = Tor[block][0][i][0]
+                            except:
+                                sDst = ""
+                            try:
+                                crOrig = Tor[block][1][i][1]
+                            except:
+                                crOrig = ""
+                            try:
+                                crDst = Tor[block][0][i][1]
+                            except:
+                                crDst = ""
+                            try:
+                                scoreDst = Tor[block][0][i][2]
+                            except:
+                                scoreDst = ""
+
+                            score = float("{:.1f}".format(score))
+                            if score < 0:
+                                crLabel = "NO PRESENTADO"
+                            elif score < 5:
+                                crLabel = "(SUSPENSO)"
+                            elif score < 7:
+                                crLabel = "(APROBADO)"
+                            elif score < 9:
+                                crLabel = "(NOTABLE)"
+                            elif score < 9.5:
+                                crLabel = "(SOBRESALIENTE)"
+                            else:
+                                crLabel = "(MATRÍCULA)"
+
+                            if score < 0 and sOrig != "":
+                                table += " {} & {} &  & {} & {} & {} &  & {} \\\\ \\hline \n".format(sDst, crDst,
+                                                                                                     scoreDst,
+                                                                                                     sOrig,
+                                                                                                     crOrig,
+                                                                                                     crLabel)
+                            elif sOrig == "":
+                                table += " {} & {} &  & {} & {} & {} &  & \\\\ \\hline \n".format(sDst, crDst,
+                                                                                                  scoreDst,
+                                                                                                  sOrig, crOrig)
+                            else:
+                                table += " {} & {} &  & {} & {} & {} &  & {:.1f} {} \\\\ \\hline \n".format(sDst,
+                                                                                                            crDst,
+                                                                                                            scoreDst,
+                                                                                                            sOrig,
+                                                                                                            crOrig,
+                                                                                                            score,
+                                                                                                            crLabel)
+
+                    text = text.replace("{{:SUBJECT-LIST:}}", table)
+                    try:
+                        f = open(os.path.join(folder_path, file[:-3] + "tex"), "w", encoding='utf8')
+                    except Exception as e:
+                        self.dialog_critical(e)
+                    else:
+                        f.write(text)
+                        f.close()
+
+                        cmd = '%s  -output-directory="%s" "%s"' % (
+                            self.config['pdflatex'], folder_path, os.path.join(folder_path, file[:-3] + "tex"))
+                        try:
+                            call(cmd)
+                        except Exception as e:
+                            self.dialog_critical(str(e))
+                        else:
+
+                            if i == len(self.files):
+                                self.progress_bar.setValue(100)
+                            else:
+                                self.progress_bar.setValue(self.progress_bar.value() + int(100 / len(self.files)))
 
             confirm = QMessageBox()
             confirm.setIcon(QMessageBox.Information)
@@ -1019,6 +1056,11 @@ class Ui_MainWindow(object):
         single_conversor.convertSingle()
         single_conversor.exec()
 
+    def dialog_critical(self, s):
+        dlg = QMessageBox()
+        dlg.setText(s)
+        dlg.setIcon(QMessageBox.Critical)
+        dlg.exec()
 
 
 
@@ -1202,29 +1244,34 @@ class Ui_MainWindow(object):
 
                 FNULL = open(os.devnull, 'w')
                 folder_path = os.path.join(primary_path, file[:-4])
-                cmd = '%s --headless --convert-to csv:"Text - txt - csv (StarCalc)":"59,34,76,1" --outdir "%s" "%s"' % (
+                cmd = '%s --headless --convert-to csv:"Text - txt - csv (StarCalc)":"59,34,76,1" --outdir %s "%s"' % (
                     self.config['soffice'], folder_path, os.path.join(self.nameFolderAlumnos, file))
-                call(cmd)
 
-                csv_file = os.path.join(folder_path, file[:-3] + "csv")
-                personalData, ToR = readToR(csv_file)
+                try:
+                    call(cmd)
+                except Exception as e:
+                    self.dialog_critical(str(e))
 
-                destination = personalData[UNIV_COLUMN].upper()
+                else:
+                    csv_file = os.path.join(folder_path, file[:-3] + "csv")
+                    personalData, ToR = readToR(csv_file)
 
-                american, ToR = tor.parseToR(ToR)
+                    destination = personalData[UNIV_COLUMN].upper()
 
-                # 2. Parse and prepare equivalences table.
-                raw_destination, raw_origin = readData(self.config['conversion_table'], HOME, destination)
+                    american, ToR = tor.parseToR(ToR)
 
-                x, aliasx, y, aliasy = tor.expandScores(raw_origin, raw_destination, american)
+                    # 2. Parse and prepare equivalences table.
+                    raw_destination, raw_origin = readData(self.config['conversion_table'], HOME, destination)
 
-                # 3. Expand the table to score suggestions for each destination subject
-                ToR = tor.extendToR(ToR, x, aliasx, y, aliasy, american)
+                    x, aliasx, y, aliasy = tor.expandScores(raw_origin, raw_destination, american)
 
-                # Generate debug informatio
+                    # 3. Expand the table to score suggestions for each destination subject
+                    ToR = tor.extendToR(ToR, x, aliasx, y, aliasy, american)
 
-                self.MyTable.datos_alumno[file].extend([folder_path, personalData, ToR])
-                self.MyTable.show_info_check(personalData, ToR, file)
+                    # Generate debug informatio
+
+                    self.MyTable.datos_alumno[file].extend([folder_path, personalData, ToR])
+                    self.MyTable.show_info_check(personalData, ToR, file)
 
                 if i == len(self.files) - 1:
                     self.progress_bar.setValue(100)
