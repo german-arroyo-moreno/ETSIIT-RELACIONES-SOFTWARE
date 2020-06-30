@@ -22,7 +22,7 @@ import tor
 import csv
 import sys
 import os
-from subprocess import call,check_call
+from subprocess import call, check_call
 from PyQt5.QtWidgets import QTabWidget, QPushButton, QWidget, QTableWidget, QMainWindow, QMessageBox, QMenu, QMenuBar, \
     QVBoxLayout, QHeaderView, QHBoxLayout, QStatusBar, QAction, QComboBox, QLabel, QFileDialog, QTableWidgetItem, \
     QApplication, QProgressBar, QToolButton, QDialog
@@ -101,8 +101,6 @@ def readToR(fileName):
     return (personalData, subjectData)
 
 
-
-
 def ls1(path, option):
     """Función que obtiene todos los archivos del directorio pasado como argumento a la función , comprueba si son
     ficheros csv y finalmente devolvemos una lista con el nombre de todos los archivos encontrados.
@@ -153,7 +151,6 @@ class SingleConversor(QDialog):
         layout = QVBoxLayout(parent)
         self.config = {}
 
-
         self.pushButton = QPushButton("Generar")
 
         self.pushButton.setMaximumHeight(31)
@@ -183,8 +180,8 @@ class SingleConversor(QDialog):
 
         self.layout_buttons = QHBoxLayout()
         self.layout_buttons.setSpacing(500)
-        self.layout_buttons.addWidget(self.clearContent,Qt.AlignLeft)
-        self.layout_buttons.addWidget(self.helpButton,Qt.AlignRight)
+        self.layout_buttons.addWidget(self.clearContent, Qt.AlignLeft)
+        self.layout_buttons.addWidget(self.helpButton, Qt.AlignRight)
 
         layout.setSpacing(25)
         layout.addWidget(self.texto_select)
@@ -196,13 +193,12 @@ class SingleConversor(QDialog):
         self.setLayout(layout)
 
     def clearContents(self):
-        for i in range(1,self.tableWidget.rowCount()):
+        for i in range(1, self.tableWidget.rowCount()):
             for p in range(self.tableWidget.columnCount()):
-                item = self.tableWidget.item(i,p)
+                item = self.tableWidget.item(i, p)
                 if item is not None and item.text():
                     newitem = QTableWidgetItem()
-                    self.tableWidget.setItem(i,p,newitem)
-
+                    self.tableWidget.setItem(i, p, newitem)
 
     def showHelp(self):
 
@@ -212,13 +208,13 @@ class SingleConversor(QDialog):
         confirm.setIcon(QMessageBox.Information)
 
         confirm.setText(
-                "Para obtener calificaciones de forma manual es necesario seguir los siguientes pasos:\n\n 1. Se selecciona el país del que se desea "
-                "convertir las calificaciones\n\n 2. Después se rellena la tabla con los datos que se piden para la conversión (Para ahorrar cierto tiempo"
-                " se han implementado 3 opciones)\n\n   2.1. Si solo va a convertir una asignatura, solo es necesario que rellena la calificación de origen "
-                "(Por defecto se asume que tanto la asignatura de destino como de origen valen 6 créditos, en caso contrario se le puede especificar)\n\n"
-                "   2.2. Si hay más de una asignatura, debe rellenar los créditos de las asignaturas origen y destino y asignar el número de bloque. "
-                "NO ES NECESARIO PONER NOMBRES DE ASIGNATURA SI NO LO DESEA\n\n  2.3. Cualquier otra ejecución en la que se rellenen todos los datos "
-                "funcionará igualmente de forma correcta\n\n 3. Pulsamos el botón de generar para obtener las calificaciones")
+            "Para obtener calificaciones de forma manual es necesario seguir los siguientes pasos:\n\n 1. Se selecciona el país del que se desea "
+            "convertir las calificaciones\n\n 2. Después se rellena la tabla con los datos que se piden para la conversión (Para ahorrar cierto tiempo"
+            " se han implementado 3 opciones)\n\n   2.1. Si solo va a convertir una asignatura, solo es necesario que rellena la calificación de origen "
+            "(Por defecto se asume que tanto la asignatura de destino como de origen valen 6 créditos, en caso contrario se le puede especificar)\n\n"
+            "   2.2. Si hay más de una asignatura, debe rellenar los créditos de las asignaturas origen y destino y asignar el número de bloque. "
+            "NO ES NECESARIO PONER NOMBRES DE ASIGNATURA SI NO LO DESEA\n\n  2.3. Cualquier otra ejecución en la que se rellenen todos los datos "
+            "funcionará igualmente de forma correcta\n\n 3. Pulsamos el botón de generar para obtener las calificaciones")
 
         confirm.exec()
 
@@ -252,16 +248,22 @@ class SingleConversor(QDialog):
 
         data = []
         num_rows = self.getNumFilledRows()
+        self.deleteOldResults()
 
-        bloques = []
+        bloques = {}
         for i in range(1, self.tableWidget.rowCount()):
+
             calif = self.tableWidget.item(i, 4)
+
             row = []
             for p in range(self.tableWidget.columnCount() - 2):
                 item = self.tableWidget.item(i, p)
                 if item is not None and item.text():
                     if p == 8:
-                        bloques.append(i)
+                        if not int(item.text()) in bloques.keys():
+                            bloques[int(item.text())]=[]
+
+                        bloques[int(item.text())].append(i)
 
                     row.append(item.text())
                 else:
@@ -274,71 +276,130 @@ class SingleConversor(QDialog):
                             elif p == 1 or p == 6:
                                 aux = '6'
                             elif p == 3 or p == 8:
-                                bloques.append(i)
+                                if not 1 in bloques.keys():
+                                    bloques[1] = []
+
+                                bloques[1].append(i)
                                 aux = '1'
                         row.append(aux)
 
                     else:
 
                         bloque_orig = self.tableWidget.item(i, 3)
-                        bloque_dest = self.tableWidget.item(i,8)
-                        aux =""
+                        bloque_dest = self.tableWidget.item(i, 8)
+                        aux = ""
 
-                        if p==0 and bloque_orig is not None and bloque_orig.text():
+                        if p == 0 and bloque_orig is not None and bloque_orig.text():
                             aux = "Asig"
-                        if p ==5 and bloque_dest is not None and bloque_dest.text():
+                        if p == 5 and bloque_dest is not None and bloque_dest.text():
                             aux = "Asig"
 
                         row.append(aux)
 
-
-
             data.append(row)
 
+        try:
+            american, ToR = tor.parseToR(data)
+        except BaseException as e:
+            self.dialog_critical(str(e))
+        else:
 
+            try:
+                raw_destination, raw_origin = readData(self.config['conversion_table'], HOME,
+                                                       self.select_country.currentText().upper())
+            except BaseException as e:
+                self.dialog_critical(str(e))
+            else:
 
-        american, ToR = tor.parseToR(data)
-        raw_destination, raw_origin = readData(self.config['conversion_table'], HOME,
-                                               self.select_country.currentText().upper())
-        x, aliasx, y, aliasy = tor.expandScores(raw_origin, raw_destination, american)
-
-        # 3. Expand the table to score suggestions for each destination subject
-        ToR = tor.extendToR(ToR, x, aliasx, y, aliasy, american)
-
-        for block in ToR:
-            maxCr = 0
-            fail = -1
-            score = 0
-            n = len(ToR[block][0])
-            for i in range(n):
-                maxCr += ToR[block][0][i][1]
-
-            for i in range(n):
-                if ToR[block][0][i][3] < 5:
-                    fail = ToR[block][0][i][3]
-                    score = fail
-                    break
+                try:
+                    x, aliasx, y, aliasy = tor.expandScores(raw_origin, raw_destination, american)
+                except BaseException as e:
+                    self.dialog_critical(str(e))
                 else:
-                    score += ToR[block][0][i][3] * (ToR[block][0][i][1] / maxCr)
-            for i in range(max(n, len(ToR[block][1]))):
 
-                score = float("{:.1f}".format(score))
-                if score < 0:
-                    crLabel = "NO PRESENTADO"
-                elif score < 5:
-                    crLabel = "(SUSPENSO)"
-                elif score < 7:
-                    crLabel = "(APROBADO)"
-                elif score < 9:
-                    crLabel = "(NOTABLE)"
-                elif score < 9.5:
-                    crLabel = "(SOBRESALIENTE)"
-                else:
-                    crLabel = "(MATRÍCULA)"
+                    try:
+                        # 3. Expand the table to score suggestions for each destination subject
+                        ToR = tor.extendToR(ToR, x, aliasx, y, aliasy, american)
+                    except BaseException as e:
+                        self.dialog_critical(str(e))
+                    else:
 
-            cont = bloques.pop(0)
-            self.tableWidget.setItem(cont, 9, QTableWidgetItem(str(score)))
-            self.tableWidget.setItem(cont, 10, QTableWidgetItem(crLabel))
+                        for block in ToR:
+                            maxCr = 0
+                            fail = -1
+                            score = 0
+                            n = len(ToR[block][0])
+
+                            for i in range(n):
+                                maxCr += ToR[block][0][i][1]
+                            if n == 0:
+                                self.dialog_critical(
+                                    "Fallo número de bloque destino - es necesario poner todos los bloques destino para hacer la conversión")
+                                self.deleteOldResults()
+                                break
+                            elif maxCr == 0:
+                                self.dialog_critical(
+                                    "Fallo número de créditos destino - es necesario poner todos los créditos destino para hacer la conversión")
+                                self.deleteOldResults()
+                                break
+                            for i in range(n):
+                                if ToR[block][0][i][3] < 5:
+                                    fail = ToR[block][0][i][3]
+                                    score = fail
+                                    break
+                                else:
+
+                                    score += ToR[block][0][i][3] * (ToR[block][0][i][1] / maxCr)
+
+                            for i in range(max(n, len(ToR[block][1]))):
+
+
+
+                                score = float("{:.1f}".format(score))
+
+                                if score < 0:
+                                    crLabel = "NO PRESENTADO"
+                                elif score < 5:
+                                    crLabel = "(SUSPENSO)"
+                                elif score < 7:
+                                    crLabel = "(APROBADO)"
+                                elif score < 9:
+                                    crLabel = "(NOTABLE)"
+                                elif score < 10:
+                                    crLabel = "(SOBRESALIENTE)"
+                                else:
+                                    crLabel = "(MATRÍCULA)"
+
+
+                            try:
+                                bloque = bloques[block]
+                            except BaseException:
+                                self.dialog_critical("Fallo en número de bloque origen")
+                                self.deleteOldResults()
+                                break
+                            else:
+                                print(bloques)
+                                for b in bloque:
+                                    self.tableWidget.setItem(b, 9, QTableWidgetItem(str(score)))
+                                    self.tableWidget.setItem(b , 10, QTableWidgetItem(crLabel))
+
+    def dialog_critical(self, s):
+        dlg = QMessageBox()
+        dlg.setText(s)
+        dlg.setIcon(QMessageBox.Critical)
+        dlg.exec()
+
+    def deleteOldResults(self):
+        for i in range(1, self.tableWidget.rowCount()):
+            item = self.tableWidget.item(i, 9)
+            if item is not None and item.text():
+                newitem = QTableWidgetItem()
+                self.tableWidget.setItem(i, 9, newitem)
+
+            item = self.tableWidget.item(i, 10)
+            if item is not None and item.text():
+                newitem = QTableWidgetItem()
+                self.tableWidget.setItem(i, 10, newitem)
 
     def convertSingle(self):
 
@@ -361,6 +422,7 @@ class SingleConversor(QDialog):
             for p in range(self.tableWidget.columnCount()):
                 if i == 0:
                     item = QTableWidgetItem(switcher.get(p))
+                    item.setFlags(Qt.ItemIsEnabled)
                     if p == 0 or p == 5:
                         item.setBackground(QColor(123, 193, 233))
                     else:
@@ -379,6 +441,7 @@ class MyTableWidget(QWidget):
         self.tabs.setTabsClosable(True)
         self.datos_alumno = {}
         self.config = {}
+        self.files = []
 
         # Agregar pestañas al widget
         self.generateALL = QPushButton("Generar PDF todos los alumnos")
@@ -395,45 +458,48 @@ class MyTableWidget(QWidget):
         self.layout.addWidget(self.generateALL)
         self.setLayout(self.layout)
 
-    def crear_tabs(self, files):
-        self.tabs.clear()
-        self.files = files
-        self.datos_alumno.fromkeys(files)
-        for file in files:
-            tab = QWidget()
-            self.datos_alumno[file] = []
-            tableWidget = QTableWidget()
-            tableWidget.setGeometry(QRect(0, 1, 771, 551))
-            tableWidget.setRowCount(30)
-            tableWidget.setColumnCount(30)
-            tableWidget.setObjectName("tableWidget")
-            tableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
-            self.datos_alumno[file].append(tableWidget)
+    def crear_tabs(self, file):
 
-            tab.layout = QVBoxLayout(self)
-            botonesLayout = QHBoxLayout(self)
-            tab.layout.setAlignment(Qt.AlignCenter)
-            tab.layout.setSpacing(25)
-            pushButton1 = QPushButton("Generar PDF alumno")
-            pushButton2 = QPushButton("Exportar CSV alumno")
-            pushButton1.setStyleSheet("background-color:rgb(228,195,195)")
-            pushButton2.setStyleSheet("background-color:rgb(191,243,191)")
-            tab.layout.addWidget(tableWidget)
-            tab.layout.addLayout(botonesLayout)
-            botonesLayout.addWidget(pushButton2)
-            botonesLayout.addWidget(pushButton1)
-            tab.setLayout(tab.layout)
+        self.files.append(file)
 
-            pushButton2.clicked.connect(self.exportCSV)
-            pushButton1.clicked.connect(self.exportPDF)
+        tab = QWidget()
+        self.datos_alumno[file] = []
+        tableWidget = QTableWidget()
+        tableWidget.setGeometry(QRect(0, 1, 771, 551))
+        tableWidget.setRowCount(30)
+        tableWidget.setColumnCount(30)
+        tableWidget.setObjectName("tableWidget")
+        tableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.datos_alumno[file].append(tableWidget)
 
-            self.tabs.addTab(tab, file)
+        tab.layout = QVBoxLayout(self)
+        botonesLayout = QHBoxLayout(self)
+        tab.layout.setAlignment(Qt.AlignCenter)
+        tab.layout.setSpacing(25)
+        pushButton1 = QPushButton("Generar PDF alumno")
+        pushButton2 = QPushButton("Exportar CSV alumno")
+        pushButton1.setStyleSheet("background-color:rgb(228,195,195)")
+        pushButton2.setStyleSheet("background-color:rgb(191,243,191)")
+        tab.layout.addWidget(tableWidget)
+        tab.layout.addLayout(botonesLayout)
+        botonesLayout.addWidget(pushButton2)
+        botonesLayout.addWidget(pushButton1)
+        tab.setLayout(tab.layout)
+
+        pushButton2.clicked.connect(self.exportCSV)
+        pushButton1.clicked.connect(self.exportPDF)
+
+        self.tabs.addTab(tab, file)
+
+
+
 
     def dialog_critical(self, s):
         dlg = QMessageBox()
         dlg.setText(s)
         dlg.setIcon(QMessageBox.Critical)
-        dlg.show()
+        dlg.exec()
+
 
     def exportCSV(self):
         if self.tabs.count() > 0:
@@ -441,9 +507,9 @@ class MyTableWidget(QWidget):
             self.check_info_show(self.tabs.tabText(self.tabs.currentIndex()))
             try:
                 exportCSVToR(self.datos_alumno[self.tabs.tabText(self.tabs.currentIndex())][2],
-                         self.datos_alumno[self.tabs.tabText(self.tabs.currentIndex())][3],
-                         os.path.join(self.datos_alumno[self.tabs.tabText(self.tabs.currentIndex())][1],
-                                      self.tabs.tabText(self.tabs.currentIndex())[:-4] + "--debug_mode.csv"))
+                             self.datos_alumno[self.tabs.tabText(self.tabs.currentIndex())][3],
+                             os.path.join(self.datos_alumno[self.tabs.tabText(self.tabs.currentIndex())][1],
+                                          self.tabs.tabText(self.tabs.currentIndex())[:-4] + "--debug_mode.csv"))
             except Exception as e:
                 self.dialog_critical(str(e))
             else:
@@ -460,6 +526,7 @@ class MyTableWidget(QWidget):
             confirm.setText("No hay alumnos actualmente")
             confirm.exec()
 
+
     def exportPDF(self):
         if self.tabs.count() > 0:
             self.check_info_show(self.tabs.tabText(self.tabs.currentIndex()))
@@ -468,7 +535,7 @@ class MyTableWidget(QWidget):
             Tor = self.datos_alumno[file][3]
             folder_path = self.datos_alumno[self.tabs.tabText(self.tabs.currentIndex())][1]
             try:
-                f  = open(os.path.join(os.path.abspath(os.getcwd()), "config/tex/template01.tex"), "r", encoding='utf8')
+                f = open(os.path.join(os.path.abspath(os.getcwd()), "config/tex/template01.tex"), "r", encoding='utf8')
             except Exception as e:
                 self.dialog_critical(str(e))
             else:
@@ -531,7 +598,7 @@ class MyTableWidget(QWidget):
                             crLabel = "(APROBADO)"
                         elif score < 9:
                             crLabel = "(NOTABLE)"
-                        elif score < 9.5:
+                        elif score < 10:
                             crLabel = "(SOBRESALIENTE)"
                         else:
                             crLabel = "(MATRÍCULA)"
@@ -558,7 +625,7 @@ class MyTableWidget(QWidget):
                 text = text.replace("{{:SUBJECT-LIST:}}", table)
                 try:
                     f = open(os.path.join(folder_path, file[:-3] + "tex"), "w", encoding='utf8')
-                except Exception as e:
+                except BaseException as e:
                     self.dialog_critical(str(e))
                 else:
                     f.write(text)
@@ -569,7 +636,7 @@ class MyTableWidget(QWidget):
 
                     try:
                         call(cmd)
-                    except Exception as e:
+                    except BaseException as e:
                         self.dialog_critical(str(e))
                     else:
                         confirm = QMessageBox()
@@ -580,10 +647,11 @@ class MyTableWidget(QWidget):
 
         else:
             confirm = QMessageBox()
-            confirm.setIcon(QMessageBox.Critical)
+            confirm.setIcon(QMessageBox.Information)
             confirm.setWindowTitle("Generar calificaciones finales")
             confirm.setText("No hay alumnos actualmente")
             confirm.exec()
+
 
     def check_tabs(self):
         self.progress_bar.show()
@@ -593,8 +661,8 @@ class MyTableWidget(QWidget):
         for i in range(num_tabs):
             self.files.append(self.tabs.tabText(i))
 
-    def exportPDF_ALL(self):
 
+    def exportPDF_ALL(self):
         self.check_tabs()
 
         if self.tabs.count() > 0:
@@ -669,7 +737,7 @@ class MyTableWidget(QWidget):
                                 crLabel = "(APROBADO)"
                             elif score < 9:
                                 crLabel = "(NOTABLE)"
-                            elif score < 9.5:
+                            elif score < 10:
                                 crLabel = "(SOBRESALIENTE)"
                             else:
                                 crLabel = "(MATRÍCULA)"
@@ -729,8 +797,8 @@ class MyTableWidget(QWidget):
             confirm.exec()
             self.progress_bar.hide()
 
-    def show_info_check(self, personalData, ToR, file):
 
+    def show_info_check(self, personalData, ToR, file):
         tableWidget = self.datos_alumno[file][0]
         tableWidget.setRowCount(0)
 
@@ -824,8 +892,8 @@ class MyTableWidget(QWidget):
             tableWidget.setRowCount(tableWidget.rowCount() + 1)
             idv += 1
 
-    def check_info_show(self, file):
 
+    def check_info_show(self, file):
         idv = -1
         personalData = self.datos_alumno[file][2]
         Tor = self.datos_alumno[file][3]
@@ -953,8 +1021,7 @@ class Ui_MainWindow(object):
         self.nameFolderAlumnos = ""
         self.config = {}
         self.fileConfig = 'config/config.ini'
-        self.files =[]
-
+        self.files = []
 
         # PARSER
         self.parser = ConfigParser()
@@ -1035,7 +1102,7 @@ class Ui_MainWindow(object):
         self.config['soffice'] = self.parser.get('config', 'soffice')
         self.config['pdflatex'] = self.parser.get('config', 'pdflatex')
         self.config['conversion_table'] = self.parser.get('config', 'conversion_table')
-        self.config['dest_folder'] = self.parser.get('config','dest_folder')
+        self.config['dest_folder'] = self.parser.get('config', 'dest_folder')
         self.MyTable.config = self.config
 
     def back(self):
@@ -1062,15 +1129,12 @@ class Ui_MainWindow(object):
         dlg.setIcon(QMessageBox.Critical)
         dlg.exec()
 
-
-
     def showHelp(self):
 
         confirm = QMessageBox()
         confirm.setIcon(QMessageBox.Information)
         confirm.setWindowTitle("Ayuda")
         confirm.setIcon(QMessageBox.Information)
-
 
         confirm.setText(
             "Para obtener las calificaciones finales se deben realizar los siguientes pasos:\n\n "
@@ -1080,10 +1144,6 @@ class Ui_MainWindow(object):
             "3.  Se pulsa GENERAR y se ejecutará el software (se mostrará una barra de progreso para indicar al usuario que el software está trabajando \n\n"
             "Si desea cambiar algún fichero de configuración, simplemente accedemos a Opciones y seleccionamos la opción que queramos modificar\n")
         confirm.exec()
-
-
-
-
 
     def addOfficeRoute(self):
         filename = QFileDialog()
@@ -1135,11 +1195,10 @@ class Ui_MainWindow(object):
             confirm = QMessageBox()
             confirm.setIcon(QMessageBox.Information)
             confirm.setWindowTitle("Seleccionar directorio de trabajo")
-            confirm.setText("Directorio de trabajo actual : " + folder )
+            confirm.setText("Directorio de trabajo actual : " + folder)
             confirm.exec()
         else:
             pass
-
 
     def importAlumno(self):
         filename = QFileDialog()
@@ -1158,7 +1217,6 @@ class Ui_MainWindow(object):
         else:
             self.files.clear()
 
-
     def getAlumnos(self):
         fileName = QFileDialog()
         fileName.setWindowTitle("Seleccionar carpeta con datos de los alumnos")
@@ -1166,7 +1224,7 @@ class Ui_MainWindow(object):
 
         if folder:
             self.nameFolderAlumnos = folder
-            self.files = ls1(folder,False)
+            self.files = ls1(folder, False)
             confirm = QMessageBox()
             confirm.setIcon(QMessageBox.Information)
             confirm.setWindowTitle("Importar alumnos")
@@ -1195,7 +1253,7 @@ class Ui_MainWindow(object):
 
     def generate(self):
 
-        if len(self.files) ==0:
+        if len(self.files) == 0:
             confirm = QMessageBox()
             confirm.setIcon(QMessageBox.Critical)
             confirm.setWindowTitle("Generar calificaciones finales")
@@ -1227,7 +1285,9 @@ class Ui_MainWindow(object):
             self.progress_bar.show()
             self.progress_bar.setValue(0)
 
-            self.MyTable.crear_tabs(self.files)
+            files_check = self.files.copy()
+            self.MyTable.tabs.clear()
+
 
             folder_primary = "ALUMNOS"
             primary_path = os.path.join(self.config['dest_folder'], folder_primary)
@@ -1237,6 +1297,7 @@ class Ui_MainWindow(object):
                 os.mkdir(primary_path)
 
             for i, file in enumerate(self.files):
+
                 try:
                     os.stat(os.path.join(primary_path, file[:-4]))
                 except:
@@ -1249,29 +1310,36 @@ class Ui_MainWindow(object):
 
                 try:
                     call(cmd)
-                except Exception as e:
+                except BaseException as e:
                     self.dialog_critical(str(e))
+                    files_check.remove(file)
 
                 else:
                     csv_file = os.path.join(folder_path, file[:-3] + "csv")
+
                     personalData, ToR = readToR(csv_file)
 
                     destination = personalData[UNIV_COLUMN].upper()
 
                     american, ToR = tor.parseToR(ToR)
 
-                    # 2. Parse and prepare equivalences table.
-                    raw_destination, raw_origin = readData(self.config['conversion_table'], HOME, destination)
+                    # 2. Parse and prepare equivalences table
+                    try:
+                        raw_destination, raw_origin = readData(self.config['conversion_table'], HOME, destination)
+                    except BaseException:
+                        self.dialog_critical(
+                            "Fallo en el destino en el fichero:  " + file + " \nCompruebe que el *Código VICERRECTORADO donde se han cursado los estudios* sea válido")
+                        files_check.remove(file)
+                    else:
+                        x, aliasx, y, aliasy = tor.expandScores(raw_origin, raw_destination, american)
 
-                    x, aliasx, y, aliasy = tor.expandScores(raw_origin, raw_destination, american)
+                        # 3. Expand the table to score suggestions for each destination subject
+                        ToR = tor.extendToR(ToR, x, aliasx, y, aliasy, american)
+                        self.MyTable.crear_tabs(file)
 
-                    # 3. Expand the table to score suggestions for each destination subject
-                    ToR = tor.extendToR(ToR, x, aliasx, y, aliasy, american)
+                        self.MyTable.datos_alumno[file].extend([folder_path, personalData, ToR])
 
-                    # Generate debug informatio
-
-                    self.MyTable.datos_alumno[file].extend([folder_path, personalData, ToR])
-                    self.MyTable.show_info_check(personalData, ToR, file)
+                        self.MyTable.show_info_check(personalData, ToR, file)
 
                 if i == len(self.files) - 1:
                     self.progress_bar.setValue(100)
@@ -1284,7 +1352,10 @@ class Ui_MainWindow(object):
             self.tableWidget.hide()
             self.back_button.show()
             self.h_layout.insertSpacing(2, -25)
+
             self.MyTable.show()
+            if len(files_check) == 0:
+                self.dialog_critical("No hay ficheros cargados o se ha producido un error al generarlos")
 
 
 ########################################################################################################################
