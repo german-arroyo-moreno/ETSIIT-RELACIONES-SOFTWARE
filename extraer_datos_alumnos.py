@@ -9,21 +9,610 @@
 
 # IMPORTAMOS LOS MÓDULOS NECESARIOS PARA REALIZAR LA TAREA
 import csv
+
+from PyQt5 import QtCore, QtGui, QtWidgets
+
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
+from PyQt5.QtCore import *
+
+from email.message import EmailMessage
+
+import mimetypes
+from Crypto.Cipher import _DES
+import smtplib
+
 import os
-import argparse
 import sys
-from PyQt5 import QtCore, QtGui, QtWidgets, QtPrintSupport
+import uuid
 
-# from PyQt5.QtPrintSupport import QPrintDialog, QPrinter, QPrintPreviewDialog
+FONT_SIZES = [7, 8, 9, 10, 11, 12, 13, 14, 18, 24, 36, 48, 64, 72, 96, 144, 288]
+IMAGE_EXTENSIONS = ['.jpg', '.png', '.bmp']
+HTML_EXTENSIONS = ['.htm', '.html']
 
 
-# from plantilla import Ui_MainWindow
+def hexuuid():
+    return uuid.uuid4().hex
 
-# Generamos el objeto ArgumentParser
-parser = argparse.ArgumentParser()
-# Añadimos los argumentos
-parser.add_argument('--input', required=True, help='input folder that contains the files csv')
-parser.add_argument('--output', required=True, help='output file where the data will be save')
+
+def splitext(p):
+    return os.path.splitext(p)[1].lower()
+
+
+
+class TextEdit(QTextEdit):
+
+    def canInsertFromMimeData(self, source):
+
+        if source.hasImage():
+            return True
+        else:
+            return super(TextEdit, self).canInsertFromMimeData(source)
+
+    def insertFromMimeData(self, source):
+
+        cursor = self.textCursor()
+        document = self.document()
+
+        if source.hasUrls():
+
+            for u in source.urls():
+                file_ext = splitext(str(u.toLocalFile()))
+                if u.isLocalFile() and file_ext in IMAGE_EXTENSIONS:
+                    image = QImage(u.toLocalFile())
+                    document.addResource(QTextDocument.ImageResource, u, image)
+                    cursor.insertImage(u.toLocalFile())
+
+                else:
+                    # If we hit a non-image or non-local URL break the loop and fall out
+                    # to the super call & let Qt handle it
+                    break
+
+            else:
+                # If all were valid images, finish here.
+                return
+
+
+        elif source.hasImage():
+            image = source.imageData()
+            uuid = hexuuid()
+            document.addResource(QTextDocument.ImageResource, uuid, image)
+            cursor.insertImage(uuid)
+            return
+
+        super(TextEdit, self).insertFromMimeData(source)
+
+
+class Editor(QMainWindow):
+
+    def __init__(self, parent=None):
+        super(QMainWindow, self).__init__(parent)
+
+        layout = QVBoxLayout(parent)
+        self.editor = TextEdit()
+        # Setup the QTextEdit editor configuration
+        self.editor.setAutoFormatting(QTextEdit.AutoAll)
+        self.editor.selectionChanged.connect(self.update_format)
+
+        # Initialize default font size.
+        font = QFont('Times', 12)
+        self.editor.setFont(font)
+        # We need to repeat the size to init the current format.
+        self.editor.setFontPointSize(12)
+
+        self.sendEmail = QPushButton("Enviar correo")
+        self.sendEmail.clicked.connect(self.send_email)
+
+        layout_adjuntos = QHBoxLayout(parent)
+        self.view_adjuntos = QPushButton("Ver archivos adjuntos")
+        self.view_adjuntos.clicked.connect(self.view_attachments)
+        layout_adjuntos.addWidget(self.sendEmail)
+        layout_adjuntos.addWidget(self.view_adjuntos)
+
+        self.ruta = None
+
+        layout.addWidget(self.editor)
+        layout.addLayout(layout_adjuntos)
+
+
+        layout.setSpacing(25)
+        self.sendEmail.setStyleSheet("background-color:rgb(228,195,195)")
+
+        container = QWidget()
+        container.setLayout(layout)
+        self.setCentralWidget(container)
+
+        self.archivos_adjuntos = []
+
+        self.status = QStatusBar()
+        self.setStatusBar(self.status)
+
+        toolbar = QToolBar()
+        toolbar.setIconSize(QSize(30, 30))
+        self.addToolBar(toolbar)
+        file_menu = self.menuBar().addMenu("Archivo")
+
+        open_file_action = QAction(QIcon(os.path.join('images', 'blue-folder-open-document.png')), "Abrir fichero...",
+                                   self)
+        open_file_action.setStatusTip("Abrir Fichero")
+        open_file_action.triggered.connect(self.openFile)
+        file_menu.addAction(open_file_action)
+        toolbar.addAction(open_file_action)
+
+        save_file_action = QAction(QIcon(os.path.join('images', 'disk.png')), "Guardar", self)
+        save_file_action.setStatusTip("Guardar")
+        save_file_action.triggered.connect(self.saveFile)
+        file_menu.addAction(save_file_action)
+        toolbar.addAction(save_file_action)
+
+        saveas_file_action = QAction(QIcon(os.path.join('images', 'disk--pencil.png')), "Guardar como...", self)
+        saveas_file_action.setStatusTip("Guardar como...")
+        saveas_file_action.triggered.connect(self.guardarComo)
+        file_menu.addAction(saveas_file_action)
+        toolbar.addAction(saveas_file_action)
+
+        edit_menu = self.menuBar().addMenu("Editar")
+
+        undo_action = QAction(QIcon(os.path.join('images', 'arrow-curve-180-left.png')), "Deshacer", self)
+        undo_action.setStatusTip("Deshacer último cambio")
+        undo_action.triggered.connect(self.editor.undo)
+        toolbar.addAction(undo_action)
+        edit_menu.addAction(undo_action)
+
+        redo_action = QAction(QIcon(os.path.join('images', 'arrow-curve.png')), "Rehacer", self)
+        redo_action.setStatusTip("Rehacer último cambio")
+        redo_action.triggered.connect(self.editor.redo)
+        toolbar.addAction(redo_action)
+        edit_menu.addAction(redo_action)
+
+        cut_action = QAction(QIcon(os.path.join('images', 'scissors.png')), "Cortar", self)
+        cut_action.setStatusTip("Cortar")
+        cut_action.setShortcut(QKeySequence.Cut)
+        cut_action.triggered.connect(self.editor.cut)
+        toolbar.addAction(cut_action)
+        edit_menu.addAction(cut_action)
+
+        copy_action = QAction(QIcon(os.path.join('images', 'document-copy.png')), "Copiar", self)
+        copy_action.setStatusTip("Copiar")
+        cut_action.setShortcut(QKeySequence.Copy)
+        copy_action.triggered.connect(self.editor.copy)
+        toolbar.addAction(copy_action)
+        edit_menu.addAction(copy_action)
+
+        paste_action = QAction(QIcon(os.path.join('images', 'clipboard-paste-document-text.png')), "Pegar", self)
+        paste_action.setStatusTip("Pegar")
+        cut_action.setShortcut(QKeySequence.Paste)
+        paste_action.triggered.connect(self.editor.paste)
+        toolbar.addAction(paste_action)
+        edit_menu.addAction(paste_action)
+
+        select_action = QAction(QIcon(os.path.join('images', 'selection-input.png')), "Seleccionar todo", self)
+        select_action.setStatusTip("Seleccionar todo")
+        cut_action.setShortcut(QKeySequence.SelectAll)
+        select_action.triggered.connect(self.editor.selectAll)
+        toolbar.addAction(select_action)
+        edit_menu.addAction(select_action)
+
+        attach_file = QAction(QIcon(os.path.join('images', 'attach-file.png')), "Adjuntar archivo", self)
+        attach_file.setStatusTip("Adjuntar archivo")
+        attach_file.triggered.connect(self.attach_file)
+        toolbar.addAction(attach_file)
+
+        format_menu = self.menuBar().addMenu("Formato")
+
+        self.fonts = QFontComboBox()
+        self.fonts.currentFontChanged.connect(self.editor.setCurrentFont)
+        toolbar.addWidget(self.fonts)
+
+        self.fontsize = QComboBox()
+        self.fontsize.addItems([str(s) for s in FONT_SIZES])
+
+        self.fontsize.currentIndexChanged[str].connect(lambda s: self.editor.setFontPointSize(float(s)))
+        toolbar.addWidget(self.fontsize)
+
+        fontColor = QAction(QIcon(os.path.join('images', 'font-color.png')), "Cambiar color de la fuente", self)
+        fontColor.triggered.connect(self.change_color_font)
+        fontColor.setStatusTip("Cambiar color de la fuente")
+        toolbar.addAction(fontColor)
+        format_menu.addAction(fontColor)
+
+        self.bold_action = QAction(QIcon(os.path.join('images', 'edit-bold.png')), "Negrita", self)
+        self.bold_action.setStatusTip("Negrita")
+        self.bold_action.setShortcut(QKeySequence.Bold)
+        self.bold_action.setCheckable(True)
+        self.bold_action.toggled.connect(lambda x: self.editor.setFontWeight(QFont.Bold if x else QFont.Normal))
+        toolbar.addAction(self.bold_action)
+        format_menu.addAction(self.bold_action)
+
+        self.italic_action = QAction(QIcon(os.path.join('images', 'edit-italic.png')), "Cursiva", self)
+        self.italic_action.setStatusTip("Cursiva")
+        self.italic_action.setShortcut(QKeySequence.Italic)
+        self.italic_action.setCheckable(True)
+        self.italic_action.toggled.connect(self.editor.setFontItalic)
+        toolbar.addAction(self.italic_action)
+        format_menu.addAction(self.italic_action)
+
+        self.underline_action = QAction(QIcon(os.path.join('images', 'edit-underline.png')), "Subrayado", self)
+        self.underline_action.setStatusTip("Subrayado")
+        self.underline_action.setShortcut(QKeySequence.Underline)
+        self.underline_action.setCheckable(True)
+        self.underline_action.toggled.connect(self.editor.setFontUnderline)
+        toolbar.addAction(self.underline_action)
+        format_menu.addAction(self.underline_action)
+
+        self.alignl_action = QAction(QIcon(os.path.join('images', 'edit-alignment.png')), "Alinear izquierda", self)
+        self.alignl_action.setStatusTip("Alinear a la izquierda")
+        self.alignl_action.setCheckable(True)
+        self.alignl_action.triggered.connect(lambda: self.editor.setAlignment(Qt.AlignLeft))
+        toolbar.addAction(self.alignl_action)
+        format_menu.addAction(self.alignl_action)
+
+        self.alignc_action = QAction(QIcon(os.path.join('images', 'edit-alignment-center.png')), "Alinear centro", self)
+        self.alignc_action.setStatusTip("Alinear en el centro")
+        self.alignc_action.setCheckable(True)
+        self.alignc_action.triggered.connect(lambda: self.editor.setAlignment(Qt.AlignCenter))
+        toolbar.addAction(self.alignc_action)
+        format_menu.addAction(self.alignc_action)
+
+        self.alignr_action = QAction(QIcon(os.path.join('images', 'edit-alignment-right.png')), "Alinear derecha", self)
+        self.alignr_action.setStatusTip("Alinear a la derecha")
+        self.alignr_action.setCheckable(True)
+        self.alignr_action.triggered.connect(lambda: self.editor.setAlignment(Qt.AlignRight))
+        toolbar.addAction(self.alignr_action)
+        format_menu.addAction(self.alignr_action)
+
+        web_link = QAction(QIcon(os.path.join('images', 'web-link.png')), "Convertir en enlace", self)
+        web_link.setStatusTip("Convertir en enlace URL")
+        web_link.triggered.connect(self.convert_to_url)
+        toolbar.addAction(web_link)
+
+        self.datos_alumnos = None
+        self.dicc_fields = {}
+
+        format_group = QActionGroup(self)
+        format_group.setExclusive(True)
+        format_group.addAction(self.alignl_action)
+        format_group.addAction(self.alignc_action)
+        format_group.addAction(self.alignr_action)
+
+        self._format_actions = [
+            self.fonts,
+            self.fontsize,
+            self.bold_action,
+            self.italic_action,
+            self.underline_action,
+        ]
+
+        self.update_format()
+        self.update_title()
+        self.show()
+
+    def block_signals(self, objects, b):
+        for o in objects:
+            o.blockSignals(b)
+
+    def update_format(self):
+        """
+        Update the font format toolbar/actions when a new text selection is made. This is neccessary to keep
+        toolbars/etc. in sync with the current edit state.
+        :return:
+        """
+        # Disable signals for all format widgets, so changing values here does not trigger further formatting.
+        self.block_signals(self._format_actions, True)
+
+        self.fonts.setCurrentFont(self.editor.currentFont())
+        # Nasty, but we get the font-size as a float but want it was an int
+        self.fontsize.setCurrentText(str(int(self.editor.fontPointSize())))
+
+        self.italic_action.setChecked(self.editor.fontItalic())
+        self.underline_action.setChecked(self.editor.fontUnderline())
+        self.bold_action.setChecked(self.editor.fontWeight() == QFont.Bold)
+
+        self.alignl_action.setChecked(self.editor.alignment() == Qt.AlignLeft)
+        self.alignc_action.setChecked(self.editor.alignment() == Qt.AlignCenter)
+        self.alignr_action.setChecked(self.editor.alignment() == Qt.AlignRight)
+
+        self.block_signals(self._format_actions, False)
+
+    def dialog_critical(self, s):
+        dlg = QMessageBox(self)
+        dlg.setText(s)
+        dlg.setIcon(QMessageBox.Critical)
+        dlg.exec()
+
+    def openFile(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Abrir fichero", "",
+                                              "Documentos HTML (*.html);;Archivos de texto (*.txt);;Todos los archivos(*.*)")
+
+        try:
+            with open(path, 'rU') as f:
+                text = f.read()
+
+        except Exception as e:
+            self.dialog_critical(str(e))
+
+        else:
+            self.ruta = path
+            # Qt will automatically try and guess the format as txt/html
+            self.editor.setText(text)
+            self.update_title()
+
+    def saveFile(self):
+        if self.ruta is None:
+            # If we do not have a path, we need to use Save As.
+            return self.guardarComo()
+
+        text = self.editor.toHtml() if splitext(self.ruta) in HTML_EXTENSIONS else self.editor.toPlainText()
+
+        try:
+            with open(self.path, 'w') as f:
+                f.write(text)
+
+        except Exception as e:
+            self.dialog_critical(str(e))
+
+    def guardarComo(self):
+        path, _ = QFileDialog.getSaveFileName(self, "Guardar fichero", "",
+                                              "Documentos HTML (*.html);;Archivos de texto (*.txt);;Todos los archivos(*.*)")
+
+        if not path:
+            # If dialog is cancelled, will return ''
+            return
+
+        text = self.editor.toHtml() if splitext(path) in HTML_EXTENSIONS else self.editor.toPlainText()
+
+        try:
+            with open(path, 'w') as f:
+                f.write(text)
+
+        except Exception as e:
+            self.dialog_critical(str(e))
+
+        else:
+            self.ruta = path
+
+    def update_title(self):
+        self.setWindowTitle("%s" % (os.path.basename(self.ruta) if self.ruta else "Untitled"))
+
+    def change_color_font(self):
+        color = QColorDialog.getColor()
+        self.editor.setTextColor(color)
+
+    def view_attachments(self):
+
+
+        if  self.archivos_adjuntos:
+            confirm = QMessageBox()
+            confirm.setIcon(QMessageBox.Information)
+            confirm.setWindowTitle("Archivos adjuntos")
+            confirm.setIcon(QMessageBox.Information)
+
+            text = ""
+
+            for file in self.archivos_adjuntos:
+                text+= '· ' + os.path.basename(os.path.normpath(file) + '\n')
+
+
+            confirm.setText(text)
+            confirm.exec()
+        else:
+            confirm = QMessageBox()
+            confirm.setIcon(QMessageBox.Warning)
+            confirm.setWindowTitle("Archivos adjuntos")
+            confirm.setIcon(QMessageBox.Information)
+            confirm.setText("No se han encontrado archivos adjuntos")
+            confirm.exec()
+
+
+
+    def convert_to_url(self):
+        cursor = self.editor.textCursor()
+
+        cursor.insertHtml("<a href={} </a>".format(cursor.selectedText()))
+
+        format = cursor.charFormat()
+        format.setForeground(Qt.blue)
+        cursor.setCharFormat(format)
+
+    def attach_file(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Abrir archivo", "", "All files (*.*)")
+
+        if path:
+            self.archivos_adjuntos.append(path)
+
+    def checked_alumnos(self):
+        for i in range(1,self.datos_alumnos.rowCount()):
+            item = self.datos_alumnos.item(i,0)
+            if item is not None and item.checkState() == 2:
+                return True
+
+        return False
+
+
+    def send_email(self):
+
+        cypher = _DES.new('etsiit-5')
+
+        if os.path.isfile('credenciales.enc'):
+            pass
+        else:
+            usuario, ok = QInputDialog.getText(self, 'Email',
+                                               'Introduzca su dirección de correo electrónico (Asegúrese que está correctamente) :')
+            if ok:
+                passwd, ok = QInputDialog.getText(self, 'Email',
+                                                  'Introduzca la contraseña del correo anterior (Asegúrese que está correctamente) :')
+                if ok:
+                    try:
+                        archivo_encriptado = open("credenciales.enc", "wb")
+                        while True:
+                            if len(usuario) % 8 != 0:
+                                usuario += '\n'
+                            else:
+                                break
+
+                        enc = cypher.encrypt(usuario)
+                        archivo_encriptado.write(enc)
+
+                        while True:
+                            if len(passwd) % 8 != 0:
+                                passwd += '\n'
+                            else:
+                                break
+
+                        enc = cypher.encrypt(passwd)
+                        archivo_encriptado.write(enc)
+                        archivo_encriptado.close()
+                    except BaseException as e:
+                        self.dialog_critical(str(e))
+
+        if self.checked_alumnos():
+
+            buttonReply = QMessageBox()
+            buttonReply.setWindowTitle("Enviar correo")
+            buttonReply.setText("¿Desea enviar el email al correo de la UGR o al correo personal de los alumnos?")
+            buttonReply.setIcon(QMessageBox.Question)
+            buttonReply.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+            buttonReply.setDefaultButton(QMessageBox.Yes)
+            buttonYES = buttonReply.button(QMessageBox.Yes)
+            buttonYES.setText("Correo UGR")
+            buttonNO = buttonReply.button(QMessageBox.No)
+            buttonNO.setText("Correo personal")
+
+            buttonReply.setWindowFlags(QtCore.Qt.CustomizeWindowHint)
+
+            buttonReply.exec()
+
+
+
+            if buttonReply.clickedButton() == buttonYES:
+                email = "Correo UGR:"
+
+            else :
+                email = "Correo personal:"
+
+
+            try:
+                archivo = open('credenciales.enc', "rb")
+
+                info = ""
+                while True:
+                    data = archivo.read(8)
+                    n = len(data)
+                    if n == 0:
+                        break
+                    decd = cypher.decrypt(data)
+                    info += decd.decode('utf-8')
+
+                info.replace('\n', " ")
+                usuario, passwd = info.split()
+
+
+                archivo.close()
+
+
+            except BaseException as e:
+                self.dialog_critical(str(e))
+
+            else:
+
+                text, ok = QInputDialog.getText(self, 'Enviar correo', 'Introduce el asunto del mensaje:')
+                if ok:
+
+                    for i in range(1, self.datos_alumnos.rowCount()):
+                        item = self.datos_alumnos.item(i, 0)
+                        if item is not None and item.checkState() == 2:
+
+                            correo = self.datos_alumnos.item(i, self.dicc_fields[email]).text()
+                            body = self.editor.toHtml()
+
+                            for d in self.dicc_fields.keys():
+                                item = self.datos_alumnos.item(i, self.dicc_fields[d])
+                                if item is not None and item.text():
+                                    body = body.replace("{{" + str(d).upper() + "}}",item.text() )
+                                    body = body.replace("{{" + str(d).lower() + "}}", item.text())
+                                    body = body.replace("{{" + str(d) + "}}", item.text())
+
+                            try:
+                                msg = EmailMessage()
+
+                                msg['From'] = usuario
+                                msg['To'] = correo
+                                msg['Subject'] = text
+
+                                # attach image to message body
+                                # msg.attach(MIMEImage(file("google.jpg").read()))
+                                msg.add_header('Content-Type', 'text/html; charset=UTF-8')
+                                msg.set_payload(body)
+                            except BaseException as e:
+                                self.dialog_critical(str(e))
+                            else:
+
+                                try:
+                                    for file in self.archivos_adjuntos:
+
+                                        ctype, encoding = mimetypes.guess_type(file)
+                                        if ctype is None or encoding is not None:
+                                            # No guess could be made, or the file is encoded (compressed), so
+                                            # use a generic bag-of-bits type.
+                                            ctype = 'application/octet-stream'
+                                        maintype, subtype = ctype.split('/', 1)
+                                        with open(file, 'rb') as fp:
+                                            msg.add_attachment(fp.read(),
+                                                               maintype=maintype,
+                                                               subtype=subtype,
+                                                               filename=os.path.basename(os.path.normpath(file)))
+
+                                except BaseException as e:
+                                    self.dialog_critical(str(e))
+                                    sys.exit(0)
+
+
+                                # create server
+                            try:
+                                server = smtplib.SMTP('smtp.live.com', 587)
+                            except BaseException as e:
+                                self.dialog_critical(str(e))
+                            else:
+
+                                server.ehlo()
+                                server.starttls()
+                                server.ehlo()
+
+                                try:
+                                    server.login(usuario, passwd)
+                                except BaseException as e:
+                                    self.dialog_critical(str(e))
+                                else:
+
+                                    try:
+                                        server.sendmail(msg['From'], msg['To'], msg.as_string().encode('utf-8'), )
+                                    except BaseException as e:
+                                        self.dialog_critical(str(e))
+                                    else:
+
+                                        server.quit()
+
+                                        confirm = QMessageBox()
+                                        confirm.setWindowTitle("Enviar correo")
+                                        confirm.setIcon(QMessageBox.Information)
+                                        confirm.setText("Email enviado correctamente a : <b> %s </b>" % (msg['To']))
+                                        confirm.exec()
+
+                                        self.archivos_adjuntos.clear()
+        else:
+            confirm = QMessageBox()
+            confirm.setWindowTitle("Enviar correo")
+            confirm.setIcon(QMessageBox.Warning)
+            confirm.setText("No se han seleccionado alumnos para el envío de correo")
+            confirm.exec()
+
+
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
 
 
 class Tabla:
@@ -171,38 +760,6 @@ def check_dir(dir):
         exit(2)
 
 
-def check_input():
-    """Función que comprueba los argumentos pasados por línea de órdenes. Comprobamos si obtenemos solo
-    dos argumentos (sin contar el nombre del programa), en caso contrario pintamos por pantalla el error
-    producido con el formato válido de entrado y finalizamos la ejecución.
-
-    :return: lista con los nombres de los dos argumentos pasados por línea de órdenes
-    """
-
-    args = parser.parse_args()
-    check_dir(args.input)
-
-    return args.input, args.output
-
-
-"""
-# Comprobamos y obtenemos los argumentos de entrada
-folder, output_file = check_input()
-# Obtenemos los archivos contenidos en el directorio pasado como entrada al programa
-files = ls1(folder)
-
-# Creamos un objeto de la clase Tabla pasandole al constructor el nombre del fichero de salida
-table = Tabla(output_file)
-# Recorremos todos los archivos del directorio
-for file in files:
-    # Guardamos los datos del alumno en una nueva fila del nuevo fichero
-    table.add_row(os.path.join(folder, file))
-
-# Guardamos la tabla final con toda la información de los alumnos
-table.save_table()
-"""
-
-
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -255,8 +812,20 @@ class Ui_MainWindow(object):
         self.actionA_adir_columnas = QtWidgets.QAction(MainWindow)
         self.actionA_adir_columnas.setObjectName("actionA_adir_columnas")
 
+        self.marcarTodo = QtWidgets.QAction(MainWindow)
+        self.desmarcarTodo = QtWidgets.QAction(MainWindow)
+        self.invertirMarcado = QtWidgets.QAction(MainWindow)
+
+        self.marcarTodo.setShortcut("Ctrl+M")
+        self.desmarcarTodo.setShortcut("Ctrl+D")
+        self.invertirMarcado.setShortcut("Ctrl+I")
+
         self.menuEditar.addAction(self.actionA_adir_filas)
         self.menuEditar.addAction(self.actionA_adir_columnas)
+        self.menuEditar.addAction(self.marcarTodo)
+        self.menuEditar.addAction(self.desmarcarTodo)
+        self.menuEditar.addAction(self.invertirMarcado)
+
         self.menuBar.addAction(self.menuEditar.menuAction())
 
         self.menuOrdenar = QtWidgets.QMenu(self.menuBar)
@@ -271,6 +840,9 @@ class Ui_MainWindow(object):
         self.menuOrdenar.addAction(self.actionUniversidad_Destino)
         self.menuOrdenar.addAction(self.actionPa_s_destino)
         self.menuBar.addAction(self.menuOrdenar.menuAction())
+
+        self.menuEnviarCorreo = QtWidgets.QAction("Enviar correo")
+        self.menuBar.addAction(self.menuEnviarCorreo)
 
         self.Tabla = Tabla()
         self.confirm_clean_before_open = False
@@ -288,7 +860,11 @@ class Ui_MainWindow(object):
         self.actionApellido.triggered.connect(self.orderBySurname)
         self.actionUniversidad_Destino.triggered.connect(self.orderByDestUniversity)
         self.actionPa_s_destino.triggered.connect(self.orderByDestCountry)
+        self.marcarTodo.triggered.connect(self.markALL)
+        self.desmarcarTodo.triggered.connect(self.unmarkALL)
+        self.invertirMarcado.triggered.connect(self.invertALL)
 
+        self.menuEnviarCorreo.triggered.connect(self.CreateEmail)
 
         self.tableWidget.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
 
@@ -320,9 +896,36 @@ class Ui_MainWindow(object):
         self.actionApellido.setText(_translate("MainWindow", "Apellido"))
         self.actionUniversidad_Destino.setText(_translate("MainWindow", "Universidad destino"))
         self.actionPa_s_destino.setText(_translate("MainWindow", "País destino"))
+        self.marcarTodo.setText("Marcar todo")
+        self.desmarcarTodo.setText("Desmarcar todo")
+        self.invertirMarcado.setText("Invertir lo marcado")
 
     ########################################################################################################################
     ########################################################################################################################
+
+    def CreateEmail(self):
+        try:
+            if self.emptyTable():
+                confirm = QMessageBox()
+                confirm.setIcon(QMessageBox.Information)
+                confirm.setWindowTitle("Enviar Correo")
+                confirm.setIcon(QMessageBox.Critical)
+                confirm.setText("No se han cargado datos de los alumnos")
+                confirm.exec()
+            else:
+                try:
+                    dialog = Editor()
+                    dialog.setWindowModality(Qt.WindowModal)
+                    dialog.datos_alumnos = self.tableWidget
+                    dialog.dicc_fields = self.diccionario_keys
+                except BaseException as e:
+                    print(str(e))
+                else:
+                    dialog.show()
+
+
+        except BaseException as e:
+            print(str(e))
 
     def clearTable(self):
 
@@ -414,6 +1017,7 @@ class Ui_MainWindow(object):
                 if i == 0:
                     item = TableWidgetItem(key)
                     item.setBackground(QtGui.QColor(255, 128, 128))
+                    item.setFlags(Qt.ItemIsEnabled)
 
                     if not key in self.diccionario_keys:
                         if añadir:
@@ -543,7 +1147,6 @@ class Ui_MainWindow(object):
     ########################################################################################################################
     ########################################################################################################################
 
-
     def orderBySurname(self):
 
         if ("APELLIDOS:") in self.diccionario_keys.keys():
@@ -577,16 +1180,36 @@ class Ui_MainWindow(object):
             confirm.setText("Datos ordenados por país de destino. ")
             confirm.exec()
 
+    def markALL(self):
+        for fil in range(1, self.tableWidget.rowCount()):
+            item = self.tableWidget.item(fil, 0)
+            if item is not None:
+                item.setCheckState(QtCore.Qt.Checked)
+
+    def unmarkALL(self):
+        for fil in range(1, self.tableWidget.rowCount()):
+            item = self.tableWidget.item(fil, 0)
+            if item is not None:
+                item.setCheckState(QtCore.Qt.Unchecked)
+
+    def invertALL(self):
+        for fil in range(1, self.tableWidget.rowCount()):
+            item = self.tableWidget.item(fil, 0)
+            if item is not None:
+                if item.checkState() == 0:
+                    item.setCheckState(QtCore.Qt.Checked)
+                elif item.checkState() == 2:
+                    item.setCheckState(QtCore.Qt.Unchecked)
+
 
 class TableWidgetItem(QtWidgets.QTableWidgetItem):
 
     def __lt__(self, other):
         if self.row() != 0 and other.row() != 0:
             return (self.text() <
-            other.text())
+                    other.text())
         else:
-           return False
-
+            return False
 
 
 ########################################################################################################################
