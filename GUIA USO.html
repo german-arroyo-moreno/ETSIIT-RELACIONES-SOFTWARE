@@ -1,0 +1,127 @@
+<style>
+    img {
+        display: block;
+        margin: auto;
+    }
+</style>
+
+
+<font face="Comic Sans MS,arial,verdana" size=4>
+    <h1 style="text-align: center;"><strong><u>GUIA DE USO DEL SOFTWARE DE ENVÍO DE EMAILS</u></strong></h1>
+
+
+    <h2> Los pasos a seguir para el correcto uso del software serían los siguientes:</h2>
+
+    <ol>
+        <h3>
+            <li>
+                <p>Debemos abrir el software correspondiente. Una vez abierto aparecerá una vista tal que así :
+                </p>
+        </h3>
+
+        <img src="screenshots/pantalla inicial.PNG" alt="pantalla inicial"></p>
+        </li>
+        </h3>
+
+        <h3>
+            <li value="2"> Una vez abierto, se deben cargar los datos de los alumnos. Para ello accedemos al menú <em>Archivo </em> donde podemos encontrar las siguientes opciones: </li>
+        </h3>
+        <ul>
+            <li><i>Nuevo :</i> se crea una nueva página y se borran los contenidos.</li>
+            <li><i>Abrir :</i> se abre un fichero CSV con los datos de los alumnos. Normalmente se abre el fichero CSV generado tras cargar una serie de alumnos.</li>
+            <li><i>Importar Alumnos :</i> se selecciona la carpeta con los todos los ficheros CSV de los alumnos y se cargan estos datos en un único fichero que se muestra por pantalla.</li>
+            <li><i>Guardar CSV :</i> una vez cargados los datos de los alumnos, se permite guardar todo ello como un único CSV, que posteriormente se puede abrir con la opcíon 'Abrir'.</li>
+            <li><i>Salir :</i> termina la ejecución del programa.</li>
+        </ul>
+        <br> Seleccionamos la opción de <b>Importar Alumnos</b>, en la que vamos a seleccionar la carpeta que contiene todos los ficheros .csv con los datos de los alumnos. Una vez seleccionado nos aparecerá dos opciones :
+
+        <ul>
+            <li><i>Borrar contenido</i>: se borra todo el contenido de la pantalla para añadir datos nuevos.</li>
+            <li><i>Añadir nuevos datos</i>: se añaden nuevos datos a los que ya se muestran por pantalla.</li>
+        </ul>
+        <br>
+        <img src="screenshots/importar_alumnos.PNG" alt="importar_alumnos"></p>
+        <br> Como actualmente no tenemos datos de los alumnos, pulsaremos en <b> Borrar contenido</b> (aunque se podría haber seleccionado la otra opción, ya que, debido a que no tenemos datos, las dos opciones trabajarían igual). A continuación nos aparecerá
+        un explorador en donde podremos seleccionar la carpeta correspondiente. Una vez seleccionada nos aparecerá los alumnos cargados :
+
+        <img src="screenshots/alumnos cargados.PNG" alt="alumnos_cargados"></p>
+
+
+
+        </li>
+        <h3>
+            <li>Una vez cargados los alumnos, es momento de seleccionar aquellos alumnos a los que se desea enviar un email. Para ello seleccionamos el checkbox de la primera columna de los alumnos que se desee. Como se observa en la imagen : </li>
+        </h3>
+        <img src="screenshots/alumnos seleccionados.PNG" alt="alumnos_seleccionados"></p>
+
+        <br>
+        <p style="text-align: center;"> En este caso vamos a trabajar con los alumnos Lucía y Pepe.</p>
+
+        <h3>
+            <li>A continuación accedemos al editor para crear nuestro email. Para ellos accedemos a la opción <b>Enviar Correo</b> y nos aparecerá el editor :
+            </li>
+        </h3>
+        <br>
+
+
+        <img src="screenshots/editor.PNG" alt="editor"></p>
+        <p style="text-align :center">Una vez disponemos del editor ya podemos crear el email que se desee aplicando todas las opciones de formato y herramientas que se ofrecen al usuario.</p>
+        <h3>
+            <li>Enviar Correo : </li>
+        </h3>
+        Una vez seleccionados los alumnos deseados, para enviarles un email es necesario :
+        <ol>
+
+            <li>Escribir el texto pertinente que se desea enviar con el formato deseado que puede utilizar todas las herramientas disponibles.
+                <ul>
+                    <li>Para enviar emails personalizados se puede utilizar diferentes patrones que capte los datos del alumno correspondiente y se envie un email personaizado. Para ello una vez cargados los alumnos, es necesario fijarse en las columnas (atributos)
+                        : Nombre, apellidos, DNI, etc. </li>
+                    <li>Una vez observados estos atributos, se pueden utilizar dentro del texto del mensaje de la siguiente manera: {{nombre}} o {{apellidos}}, así con el campo que desee. De esta forma si se seleccionan los alumnos Pedro y Lucía y se pone
+                        como texto : hola {{nombre}}, cada uno de ellos recibirá un mensaje personalizado en función de su nombre, así Pedro recibirá hola Pedro, y Lucía recibirá hola Lucía. </li>
+                    <li> Estos patrones se pueden utilizar tanto en el texto del mensaje como en el asunto.</li>
+                </ul>
+            </li>
+            <br>
+            <img src="screenshots/texto escrito.PNG" alt="texto escrito"></p>
+            <br>
+            <li> También se pueden adjuntar ficheros al email que se va a enviar y se pueden consultar los ficheros que se van a enviar en la opción 'Ver ficheros adjuntos'.</li>
+            <br>
+            <li> Una vez pulsado el botón de enviar:
+                <ul>
+                    <li> Si es la primera vez que se utiliza pedirá que se introduzcan la configuración del correo a utilizar, una vez enviado este formulario se guardarán estos datos y se cargarán automáticamente cada vez que se utiliza. Estos ajustes se
+                        pueden cambiar en 'Ajustes Email'</li>
+                </ul>
+                <br>
+                <img src="screenshots/ajustes email.PNG" alt="ajustes email"></p>
+            </li>
+
+            <br>
+            <li> Se da la opción de enviar el mensaje al correo UGR o personal de los alumnos seleccionados</li>
+            <br>
+            <img src="screenshots/correo personal ugr.PNG" alt=" seleccion email"></p>
+            <br>
+            <li> Se pedirá el asunto del mensaje</li>
+            <br>
+            <img src="screenshots/asunto.PNG" alt="asunto email"></p>
+            <br>
+            <li> Se enviará un mensaje a cada alumno seleccionado y se mostrará un mensaje de confirmación tras cada envío.</li>
+            <br>
+            <img src="screenshots/enviado.PNG" alt="ajustes email"></p>
+            <br>
+        </ol>
+
+        <p>Finalmente el email llegará a los destinatarios de forma personalizada en función de los patrones utilizados, en este caso se ha introducido mi email como si fuera el email de un alumnos y así probar la funcionalidad. De esta forma se ha recibido
+            la siguiente respuesta:
+            <br><br>
+            <img src="screenshots/mensaje recibido.png" alt="mensaje recibido"></p>
+        <br>
+
+
+        <p style="text-align: center;"><b>Todas las vistas del software poseen una opción de Ayuda que servirá de apoyo en caso de duda del funcionamiento del sistema.</b></p>
+
+
+
+
+
+
+</font>

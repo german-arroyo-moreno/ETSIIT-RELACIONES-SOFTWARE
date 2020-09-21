@@ -21,7 +21,7 @@ from email.message import EmailMessage
 import mimetypes
 from Crypto.Cipher import _DES
 import smtplib
-
+from configparser import ConfigParser
 import os
 import sys
 import uuid
@@ -37,7 +37,6 @@ def hexuuid():
 
 def splitext(p):
     return os.path.splitext(p)[1].lower()
-
 
 
 class TextEdit(QTextEdit):
@@ -83,6 +82,109 @@ class TextEdit(QTextEdit):
         super(TextEdit, self).insertFromMimeData(source)
 
 
+class InputForm(QDialog):
+    def __init__(self, parent=None):
+        super(QDialog, self).__init__(parent)
+
+        self.setWindowTitle("Ajustes Email")
+        self.resize(600, 300)
+
+        layout_dialog = QVBoxLayout(parent)
+
+        self.pushButton = QPushButton("Enviar")
+
+        self.pushButton.setMaximumHeight(31)
+        self.pushButton.setStyleSheet("background-color:rgb(220,128,128)")
+
+
+        self.helpButton = QPushButton("Ayuda")
+        self.helpButton.setMaximumHeight(31)
+        self.helpButton.setMaximumWidth(75)
+        self.helpButton.clicked.connect(self.showHelp)
+
+        self.layout_user = QHBoxLayout()
+        self.user = QLineEdit()
+        user_info = QLabel("Usuario :")
+        self.layout_user.addWidget(user_info, Qt.AlignLeft)
+        self.layout_user.addWidget(self.user, Qt.AlignRight)
+
+        self.config = {}
+
+        self.layout_passwd = QHBoxLayout()
+        self.passwd = QLineEdit()
+        self.passwd.setEchoMode(QLineEdit.Password)
+        passwd_info = QLabel("Contraseña :")
+        self.layout_passwd.addWidget(passwd_info, Qt.AlignLeft)
+        self.layout_passwd.addWidget(self.passwd, Qt.AlignRight)
+        self.layout_passwd.setSpacing(10)
+
+        self.layout_autenticacion = QHBoxLayout()
+        self.autenticacion = QComboBox(self)
+        self.autenticacion.addItems(['STARTTLS', 'SSL/TLS'])
+        info = QLabel("Seguridad de la conexión")
+        self.layout_autenticacion.addWidget(info, Qt.AlignLeft)
+        self.layout_autenticacion.addWidget(self.autenticacion, Qt.AlignRight)
+        self.layout_autenticacion.setSpacing(10)
+
+        self.layout_puerto = QHBoxLayout()
+        self.puerto = QSpinBox()
+        self.puerto.setRange(0, 65535)
+        info_puerto = QLabel("Puerto :")
+        self.layout_puerto.addWidget(info_puerto, Qt.AlignLeft)
+        self.layout_puerto.addWidget(self.puerto, Qt.AlignRight)
+        self.layout_puerto.setSpacing(10)
+
+        self.layout_server = QHBoxLayout()
+        self.servidor = QLineEdit('smtp.ugr.es')
+        info_server = QLabel("Nombre del servidor :")
+        self.layout_server.addWidget(info_server, Qt.AlignLeft)
+        self.layout_server.addWidget(self.servidor, Qt.AlignRight)
+        self.layout_server.setSpacing(10)
+
+        self.layout_buttons = QHBoxLayout()
+        self.layout_buttons.setSpacing(250)
+        self.layout_buttons.addWidget(self.helpButton, Qt.AlignLeft)
+        self.layout_buttons.addWidget(self.pushButton, Qt.AlignRight)
+
+        layout_dialog.addLayout(self.layout_user)
+        layout_dialog.addLayout(self.layout_passwd)
+        layout_dialog.addLayout(self.layout_autenticacion)
+        layout_dialog.addLayout(self.layout_server)
+        layout_dialog.addLayout(self.layout_puerto)
+        layout_dialog.addLayout(self.layout_buttons)
+
+        self.setLayout(layout_dialog)
+
+
+    def showHelp(self):
+        confirm = QMessageBox()
+        confirm.setIcon(QMessageBox.Information)
+        confirm.setWindowTitle("Ayuda")
+        confirm.setIcon(QMessageBox.Information)
+
+        confirm.setText(
+            "Es necesario especificar los diferentes elementos de la conexión, para ello:\n"
+            "1. Escribir el correo que se va a usar para mandar emails.\n"
+            "2. Escribir la contraseña correspondiente a dicho correo.\n"
+            "3. Se define el protocolo de seguridad : STARTTSL o SSL/TSL, en este caso se recomienda usar STARTTSL.\n"
+            "4. Se especifica el servidor de correo asociado al correo a utilizar, en este caso si se utiliza una cuenta "
+            "gmail el servidor sería smtp.gmail.com, cuenta hotmail : smtp.live.com, correo ugr : smtp.ugr.es.\n"
+            "5. Se indica el puerto al que se realizará la conexión, en este caso están definidos el puerto 465 para SSL/TSL y 587 para STARTTSL.\n"
+            "\nUna vez se pulsa el botón de enviar la configuración queda guardada.")
+
+        confirm.exec()
+
+
+    def readValues(self):
+        self.user.setText(self.config['user'])
+        self.passwd.setText(self.config['password'])
+        self.puerto.setValue(int(self.config['port']))
+        self.servidor.setText(self.config['server'])
+        self.autenticacion.setCurrentText(self.config['security'])
+
+
+
+
 class Editor(QMainWindow):
 
     def __init__(self, parent=None):
@@ -110,10 +212,16 @@ class Editor(QMainWindow):
         layout_adjuntos.addWidget(self.view_adjuntos)
 
         self.ruta = None
+        self.config = {}
+        self.form = None
+        self.fileConfig = 'config/config.ini'
+        self.parser = ConfigParser()
+        self.initialize_config()
+
+
 
         layout.addWidget(self.editor)
         layout.addLayout(layout_adjuntos)
-
 
         layout.setSpacing(25)
         self.sendEmail.setStyleSheet("background-color:rgb(228,195,195)")
@@ -275,6 +383,13 @@ class Editor(QMainWindow):
         format_group.addAction(self.alignc_action)
         format_group.addAction(self.alignr_action)
 
+
+        configuracion_email = self.menuBar().addAction("Ajustes Email")
+        configuracion_email.triggered.connect(self.changeInfoEmail)
+
+        help = self.menuBar().addAction("Ayuda")
+        help.triggered.connect(self.showHelp)
+
         self._format_actions = [
             self.fonts,
             self.fontsize,
@@ -290,6 +405,121 @@ class Editor(QMainWindow):
     def block_signals(self, objects, b):
         for o in objects:
             o.blockSignals(b)
+
+    def showHelp(self):
+        confirm = QMessageBox()
+        confirm.setIcon(QMessageBox.Information)
+
+        confirm.setWindowTitle("Ayuda")
+        confirm.setIcon(QMessageBox.Information)
+
+        confirm.setText(
+            "Una vez seleccionados los alumnos deseados, para enviarles un email es necesario :\n"
+            "1. Escribir el texto pertinente que se desea enviar con el formato deseado que puede utilizar todas las herramientas disponibles.\n"
+            "\t1.1. Para enviar emails personalizados se puede utilizar diferentes patrones que capte los datos del alumno correspondiente y se envie un email "
+            "personaizado. Para ello una vez cargados los alumnos, es necesario fijarse en las columnas (atributos) : Nombre, apellidos, DNI, etc\n"
+            "\t1.2. Una vez observados estos atributos, se pueden utilizar dentro del texto del mensaje de la siguiente manera: {{nombre}} o {{apellidos}}, "
+            "así con el campo que desee. De esta forma si se seleccionan los alumnos Pedro y Lucía y se pone como texto : hola {{nombre}}, cada uno de ellos"
+            " recibirá un mensaje personalizado en función de su nombre, así Pedro recibirá hola Pedro, y Lucía recibirá hola Lucía.\n"
+            "\t1.3. Estos patrones se pueden utilizar tanto en el texto del mensaje como en el asunto.\n"
+            "\n2. También se pueden adjuntar ficheros al email que se va a enviar y se pueden consultar los ficheros que se van a enviar en la opción 'Ver ficheros adjuntos'.\n"
+            "\n3. Una vez pulsado el botón de enviar:\n"
+            "\t3.1. Si es la primera vez que se utiliza pedirá que se introduzcan la configuración del correo a utilizar, una vez enviado este formulario se guardarán"
+            "estos datos y se cargarán automáticamente cada vez que se utiliza. Estos ajustes se pueden cambiar en 'Ajustes Email'\n"
+            "\n4. Se da la opción de enviar el mensaje al correo UGR o personal de los alumnos seleccionados\n"
+            "\n5. Se pedirá el asunto del mensaje\n"
+            "\n6. Se enviará un mensaje a cada alumno seleccionado y se mostrará un mensaje de confirmación tras cada envío.")
+
+        confirm.exec()
+
+    def dialog_critical(self, s):
+        dlg = QMessageBox(self)
+        dlg.setText(s)
+        dlg.setIcon(QMessageBox.Critical)
+        dlg.exec()
+
+    def changeInfoEmail(self):
+        cypher = _DES.new('etsiit-5')
+        try:
+            if os.path.isfile('credenciales.enc'):
+
+                try:
+                    archivo = open('credenciales.enc', "rb")
+
+                    if  os.stat("credenciales.enc").st_size != 0:
+                        info = ""
+                        while True:
+                            data = archivo.read(8)
+                            n = len(data)
+                            if n == 0:
+                                break
+                            decd = cypher.decrypt(data)
+                            info += decd.decode('utf-8')
+
+                        info.replace('\n', " ")
+                        self.config['user'],  self.config['password'] = info.split()
+                    else:
+                        self.config['user'] = ""
+                        self.config['password'] = ""
+
+
+
+
+                    archivo.close()
+                except BaseException as e:
+                    self.dialog_critical(str(e))
+                else:
+
+                 self.form = InputForm()
+
+
+                 self.form.config = self.config.copy()
+                 self.form.readValues()
+                 self.form.pushButton.clicked.connect(self.getValues)
+                 self.form.exec()
+
+            else:
+                self.form = InputForm()
+                self.form.pushButton.clicked.connect(self.getValues)
+
+                self.form.exec()
+        except BaseException as e:
+            self.dialog_critical(str(e))
+
+
+        try:
+            archivo_encriptado = open("credenciales.enc", "wb")
+            usuario = self.config['user']
+
+            while True:
+                if len(usuario) % 8 != 0:
+                    usuario += '\n'
+                else:
+                    break
+
+            enc = cypher.encrypt(usuario)
+            archivo_encriptado.write(enc)
+
+            passwd = self.config['password']
+            while True:
+                if len(passwd) % 8 != 0:
+                    passwd += '\n'
+                else:
+                    break
+
+            enc = cypher.encrypt(passwd)
+            archivo_encriptado.write(enc)
+            archivo_encriptado.close()
+        except BaseException as e:
+            self.dialog_critical(str(e))
+
+
+    def initialize_config(self):
+        self.parser.read(self.fileConfig)
+        self.config['security'] = self.parser.get('config', 'seguridad')
+        self.config['port'] = self.parser.get('config', 'puerto')
+        self.config['server'] = self.parser.get('config', 'servidor')
+
 
     def update_format(self):
         """
@@ -380,8 +610,7 @@ class Editor(QMainWindow):
 
     def view_attachments(self):
 
-
-        if  self.archivos_adjuntos:
+        if self.archivos_adjuntos:
             confirm = QMessageBox()
             confirm.setIcon(QMessageBox.Information)
             confirm.setWindowTitle("Archivos adjuntos")
@@ -390,8 +619,7 @@ class Editor(QMainWindow):
             text = ""
 
             for file in self.archivos_adjuntos:
-                text+= '· ' + os.path.basename(os.path.normpath(file) + '\n')
-
+                text += '· ' + os.path.basename(os.path.normpath(file) + '\n')
 
             confirm.setText(text)
             confirm.exec()
@@ -402,8 +630,6 @@ class Editor(QMainWindow):
             confirm.setIcon(QMessageBox.Information)
             confirm.setText("No se han encontrado archivos adjuntos")
             confirm.exec()
-
-
 
     def convert_to_url(self):
         cursor = self.editor.textCursor()
@@ -421,12 +647,34 @@ class Editor(QMainWindow):
             self.archivos_adjuntos.append(path)
 
     def checked_alumnos(self):
-        for i in range(1,self.datos_alumnos.rowCount()):
-            item = self.datos_alumnos.item(i,0)
+        for i in range(1, self.datos_alumnos.rowCount()):
+            item = self.datos_alumnos.item(i, 0)
             if item is not None and item.checkState() == 2:
                 return True
 
         return False
+
+    def getValues(self):
+        self.config = dict(zip(['user', 'password', 'security', 'port', 'server'],
+                               [self.form.user.text(), self.form.passwd.text(), self.form.autenticacion.currentText(),
+                                self.form.puerto.text(), self.form.servidor.text()]))
+
+        try:
+            self.parser.set('config', 'puerto', self.config['port'])
+            self.parser.set('config', 'servidor', self.config['server'])
+            self.parser.set('config', 'seguridad', self.config['security'])
+
+            with open(self.fileConfig, "w") as f:
+                self.parser.write(f)
+
+            self.initialize_config()
+        except BaseException as e:
+            self.dialog_critical(str(e))
+
+
+        self.form.close()
+
+
 
 
     def send_email(self):
@@ -436,34 +684,34 @@ class Editor(QMainWindow):
         if os.path.isfile('credenciales.enc'):
             pass
         else:
-            usuario, ok = QInputDialog.getText(self, 'Email',
-                                               'Introduzca su dirección de correo electrónico (Asegúrese que está correctamente) :')
-            if ok:
-                passwd, ok = QInputDialog.getText(self, 'Email',
-                                                  'Introduzca la contraseña del correo anterior (Asegúrese que está correctamente) :')
-                if ok:
-                    try:
-                        archivo_encriptado = open("credenciales.enc", "wb")
-                        while True:
-                            if len(usuario) % 8 != 0:
-                                usuario += '\n'
-                            else:
-                                break
+            self.form = InputForm()
+            self.form.pushButton.clicked.connect(self.getValues)
+            self.form.exec()
 
-                        enc = cypher.encrypt(usuario)
-                        archivo_encriptado.write(enc)
+            try:
+                archivo_encriptado = open("credenciales.enc", "wb")
+                usuario = self.config['user']
+                while True:
+                    if len(usuario) % 8 != 0:
+                        usuario += '\n'
+                    else:
+                        break
 
-                        while True:
-                            if len(passwd) % 8 != 0:
-                                passwd += '\n'
-                            else:
-                                break
+                enc = cypher.encrypt(usuario)
+                archivo_encriptado.write(enc)
 
-                        enc = cypher.encrypt(passwd)
-                        archivo_encriptado.write(enc)
-                        archivo_encriptado.close()
-                    except BaseException as e:
-                        self.dialog_critical(str(e))
+                passwd = self.config['password']
+                while True:
+                    if len(passwd) % 8 != 0:
+                        passwd += '\n'
+                    else:
+                        break
+
+                enc = cypher.encrypt(passwd)
+                archivo_encriptado.write(enc)
+                archivo_encriptado.close()
+            except BaseException as e:
+                self.dialog_critical(str(e))
 
         if self.checked_alumnos():
 
@@ -482,14 +730,11 @@ class Editor(QMainWindow):
 
             buttonReply.exec()
 
-
-
             if buttonReply.clickedButton() == buttonYES:
                 email = "Correo UGR:"
 
-            else :
+            else:
                 email = "Correo personal:"
-
 
             try:
                 archivo = open('credenciales.enc', "rb")
@@ -505,7 +750,6 @@ class Editor(QMainWindow):
 
                 info.replace('\n', " ")
                 usuario, passwd = info.split()
-
 
                 archivo.close()
 
@@ -524,20 +768,26 @@ class Editor(QMainWindow):
 
                             correo = self.datos_alumnos.item(i, self.dicc_fields[email]).text()
                             body = self.editor.toHtml()
+                            asunto = text
 
                             for d in self.dicc_fields.keys():
                                 item = self.datos_alumnos.item(i, self.dicc_fields[d])
                                 if item is not None and item.text():
-                                    body = body.replace("{{" + str(d).upper() + "}}",item.text() )
-                                    body = body.replace("{{" + str(d).lower() + "}}", item.text())
-                                    body = body.replace("{{" + str(d) + "}}", item.text())
+                                    body = body.replace("{{" + str(d).upper()[:-1] + "}}", item.text())
+                                    body = body.replace("{{" + str(d.lower()[:-1]) + "}}", item.text())
+                                    body = body.replace("{{" + str(d)[:-1] + "}}", item.text())
+
+                                    asunto = asunto.replace("{{" + str(d).upper()[:-1] + "}}", item.text())
+                                    asunto = asunto.replace("{{" + str(d).lower()[:-1] + "}}", item.text())
+                                    asunto = asunto.replace("{{" + str(d)[:-1] + "}}", item.text())
+
 
                             try:
                                 msg = EmailMessage()
 
                                 msg['From'] = usuario
                                 msg['To'] = correo
-                                msg['Subject'] = text
+                                msg['Subject'] = asunto
 
                                 # attach image to message body
                                 # msg.attach(MIMEImage(file("google.jpg").read()))
@@ -552,8 +802,7 @@ class Editor(QMainWindow):
 
                                         ctype, encoding = mimetypes.guess_type(file)
                                         if ctype is None or encoding is not None:
-                                            # No guess could be made, or the file is encoded (compressed), so
-                                            # use a generic bag-of-bits type.
+
                                             ctype = 'application/octet-stream'
                                         maintype, subtype = ctype.split('/', 1)
                                         with open(file, 'rb') as fp:
@@ -564,19 +813,25 @@ class Editor(QMainWindow):
 
                                 except BaseException as e:
                                     self.dialog_critical(str(e))
-                                    sys.exit(0)
 
 
-                                # create server
                             try:
-                                server = smtplib.SMTP('smtp.live.com', 587)
+                                if(self.config['security'] == 'STARTTLS'):
+
+                                    server = smtplib.SMTP(self.config['server'], self.config['port'])
+                                else:
+
+                                    server = smtplib.SMTP_SSL(self.config['server'], self.config['port'])
+
                             except BaseException as e:
+
                                 self.dialog_critical(str(e))
                             else:
 
                                 server.ehlo()
-                                server.starttls()
-                                server.ehlo()
+                                if (self.config['security'] == 'STARTTLS'):
+                                    server.starttls()
+                                    server.ehlo()
 
                                 try:
                                     server.login(usuario, passwd)
@@ -598,7 +853,9 @@ class Editor(QMainWindow):
                                         confirm.setText("Email enviado correctamente a : <b> %s </b>" % (msg['To']))
                                         confirm.exec()
 
-                                        self.archivos_adjuntos.clear()
+                    self.archivos_adjuntos.clear()
+
+
         else:
             confirm = QMessageBox()
             confirm.setWindowTitle("Enviar correo")
@@ -707,8 +964,14 @@ class Tabla:
 
         # Posible caso de error
         else:
-            print("\n ERROR : Opción inválida ( opciones disponibles : 0 y 1")
+            self.dialog_critical("\n ERROR : Opción inválida ( opciones disponibles : 0 y 1")
             exit(3)
+
+    def dialog_critical(self, s):
+        dlg = QMessageBox(self)
+        dlg.setText(s)
+        dlg.setIcon(QMessageBox.Critical)
+        dlg.exec()
 
     def read_CSV(self, path, delimiter=';', encoding='utf-8-sig'):
 
@@ -828,6 +1091,8 @@ class Ui_MainWindow(object):
 
         self.menuBar.addAction(self.menuEditar.menuAction())
 
+
+
         self.menuOrdenar = QtWidgets.QMenu(self.menuBar)
         self.menuOrdenar.setObjectName("menuOrdenar")
         self.actionApellido = QtWidgets.QAction(MainWindow)
@@ -863,6 +1128,9 @@ class Ui_MainWindow(object):
         self.marcarTodo.triggered.connect(self.markALL)
         self.desmarcarTodo.triggered.connect(self.unmarkALL)
         self.invertirMarcado.triggered.connect(self.invertALL)
+
+        help = self.menuBar.addAction("Ayuda")
+        help.triggered.connect(self.showHelp)
 
         self.menuEnviarCorreo.triggered.connect(self.CreateEmail)
 
@@ -919,13 +1187,19 @@ class Ui_MainWindow(object):
                     dialog.datos_alumnos = self.tableWidget
                     dialog.dicc_fields = self.diccionario_keys
                 except BaseException as e:
-                    print(str(e))
+                    self.dialog_critical(str(e))
                 else:
                     dialog.show()
 
 
         except BaseException as e:
-            print(str(e))
+            self.dialog_critical(str(e))
+
+    def dialog_critical(self, s):
+        dlg = QMessageBox(self)
+        dlg.setText(s)
+        dlg.setIcon(QMessageBox.Critical)
+        dlg.exec()
 
     def clearTable(self):
 
@@ -947,6 +1221,29 @@ class Ui_MainWindow(object):
             self.confirm_clean_before_open = False
 
     ########################################################################################################################
+
+    def showHelp(self):
+        confirm = QMessageBox()
+        confirm.setIcon(QMessageBox.Information)
+
+        confirm.setWindowTitle("Ayuda")
+        confirm.setIcon(QMessageBox.Information)
+
+        confirm.setText(
+            "<ul><li><b>Archivo :</b><ul>  \n"
+            "<li><i>Nuevo :</i> se crea una nueva página y se borran los contenidos.</li>\n"
+            "<li><i>Abrir :</i> se abre un fichero CSV con los datos de los alumnos. Normalmente se abre el fichero CSV generado tras cargar una serie de alumnos.</li>\n"
+            "<li><i>Importar Alumnos :</i> se selecciona la carpeta con los todos los ficheros CSV de los alumnos y se cargan estos datos en un único fichero que se muestra por pantalla.</li>\n"
+            "<li><i>Guardar CSV :</i> una vez cargados los datos de los alumnos, se permite guardar todo ello como un único CSV, que posteriormente se puede abrir con la opcíon 'Abrir'</li>\n"
+            "<li><i>Salir :</i> termina la ejecución del programa.</li></ul></li>\n\n"
+            "<li><b>Editar :</b> ofrece una serie de opciones de cara a la edición de la tabla de alumnos.</li>\n"
+            "<li><b>Ordenar : </b> permite ordenar los alumnos dependiendo de la opción que se desee.</li>\n"
+            "<li><b>Enviar Correo : </b> una vez se han cargado los alumnos, se permite el envío de emails a los alumnos seleccionados.</li>\n"
+            "</ul>"
+            )
+
+        confirm.exec()
+
     ########################################################################################################################
 
     def importarAlumnos(self):
