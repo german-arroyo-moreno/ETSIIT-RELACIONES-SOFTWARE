@@ -982,20 +982,28 @@ class Tabla:
 
                 # Comprobamos que no esté vacía y que no sea comentarios
                 if row:
+
                     for col_index, col in enumerate(row):
                         if index == 0:
                             first_row = row
 
-                            # Comprobamos si no hemos guardado dicho campo de forumulario y le asignamos una lista
+                            # Comprobamos si no hemos guardado dicho campo de formulario y le asignamos una lista
                             if not col.strip() in self.fields_form:
                                 data = []
                                 self.fields_form[col.strip()] = data
                             # self.add_spaces(0, row)
                         else:
-                            self.fields_form[first_row[col_index]].append(col.strip())
+
+
+
+                            if col.strip():
+                                self.fields_form[first_row[col_index]].append(col.strip())
+                            else:
+                                self.fields_form[first_row[col_index]].append(" ")
 
                     if index != 0:
                         self.cont_alumnos += 1
+
 
     def clear_table(self):
         self.cont_alumnos = 0
@@ -1302,6 +1310,7 @@ class Ui_MainWindow(object):
             inicio = 0
 
         for i in range(self.Tabla.cont_alumnos):
+
             for col in range(len(self.Tabla.fields_form.keys())):
                 key = list(self.Tabla.fields_form.keys())[col]
 
@@ -1325,6 +1334,7 @@ class Ui_MainWindow(object):
                         else:
                             self.diccionario_keys[key] = col + 1
                             self.tableWidget.setItem(i, col + 1, item)
+
 
                 data = self.Tabla.fields_form[key][i]
                 self.tableWidget.setItem(inicio + i + 1, self.diccionario_keys[key], TableWidgetItem(data))
@@ -1370,11 +1380,17 @@ class Ui_MainWindow(object):
 
             for row in range(self.tableWidget.rowCount()):
                 rowdata = []
-                for column in range(self.tableWidget.columnCount()):
-                    item = self.tableWidget.item(row, column + 1)
+                for column in range(1,self.tableWidget.columnCount()):
+
+                    item = self.tableWidget.item(row, column)
+
+
                     if item is not None:
                         rowdata.append(item.text())
+                    else:
+                        rowdata.append(" ")
 
+                print(rowdata)
                 writer.writerow(rowdata)
 
     ########################################################################################################################
@@ -1409,37 +1425,40 @@ class Ui_MainWindow(object):
     ########################################################################################################################
     def abrirCSV(self):
 
-        tableEmpty = True
+        try:
+            tableEmpty = True
 
-        if not self.emptyTable():
-            buttonReply = QtWidgets.QMessageBox()
-            buttonReply.setWindowTitle("Ventana de confirmación")
-            buttonReply.setText("¿Estás seguro? Se perderá el contenido actual")
-            buttonReply.setIcon(QtWidgets.QMessageBox.Question)
-            buttonReply.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
-            buttonReply.setDefaultButton(QtWidgets.QMessageBox.Yes)
+            if not self.emptyTable():
+                buttonReply = QtWidgets.QMessageBox()
+                buttonReply.setWindowTitle("Ventana de confirmación")
+                buttonReply.setText("¿Estás seguro? Se perderá el contenido actual")
+                buttonReply.setIcon(QtWidgets.QMessageBox.Question)
+                buttonReply.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
+                buttonReply.setDefaultButton(QtWidgets.QMessageBox.Yes)
 
-            result = buttonReply.exec()
+                result = buttonReply.exec()
 
-            if result == QtWidgets.QMessageBox.Yes:
-                self.confirm_clean_before_open = True
-                self.clearTable()
-            else:
-                tableEmpty = False
+                if result == QtWidgets.QMessageBox.Yes:
+                    self.confirm_clean_before_open = True
+                    self.clearTable()
+                else:
+                    tableEmpty = False
 
-        if tableEmpty:
-            filename = QtWidgets.QFileDialog()
-            name = filename.getOpenFileName(filter="Archivo CSV (*.csv)")
-            if name[1] == 'Archivo CSV (*.csv)':
-                self.Tabla.read_CSV(name[0])
-                self.saveData(False)
+            if tableEmpty:
 
-                confirm = QtWidgets.QMessageBox()
-                confirm.setWindowTitle("Importar de CSV")
-                confirm.setText("Datos importados con éxito.   ")
-                confirm.exec()
-            else:
-                pass
+                filename = QtWidgets.QFileDialog()
+                name = filename.getOpenFileName(filter="Archivo CSV (*.csv)")
+                if name[1] == 'Archivo CSV (*.csv)':
+                    self.Tabla.read_CSV(name[0])
+                    self.saveData(False)
+                    confirm = QtWidgets.QMessageBox()
+                    confirm.setWindowTitle("Importar de CSV")
+                    confirm.setText("Datos importados con éxito.")
+                    confirm.exec()
+                else:
+                    pass
+        except BaseException as e:
+            self.dialog_critical(str(e))
 
     ########################################################################################################################
     ########################################################################################################################
